@@ -1,0 +1,13 @@
+{
+  "name": "dev-claude-plugins",
+  "owner": {
+    "name": "Balduin Landolt"
+  },
+  "plugins": [
+    {
+      "name": "dev",
+      "source": "./",
+      "description": "Structured agent workflow harness — investigate, plan, review, implement, learn."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "dev",
+  "description": "Structured agent workflow harness — investigate, plan, review, implement, learn. Convention-driven, with dynamic reviewer discovery and standard project conventions.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Balduin Landolt"
+  }
+}
