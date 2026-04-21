@@ -30,19 +30,77 @@ Review the commit log since branching from main:
 git log --oneline main..HEAD
 ```
 
-If there are WIP, fixup, or messy commits, clean them up into logical commits.
+If there are WIP, fixup, or messy commits, clean them up into logical commits. Each
+resulting commit should:
 
-**Do NOT use `git rebase -i`** — interactive rebase requires a terminal editor and will
-hang in an agent context. Instead use non-interactive approaches:
-
-- To squash all commits into one: `git reset --soft $(git merge-base HEAD main) && git commit -m "..."`
-- To squash the last N commits: `git reset --soft HEAD~N && git commit -m "..."`
-- To reword the last commit: `git commit --amend -m "..."`
-
-Each resulting commit should:
 - Represent one logical change
 - Compile and pass tests (bisectable)
 - Follow commit conventions: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`
+
+#### Safety first
+
+Before any history rewrite, create a backup ref. It's zero cost and recovers you from
+any mistake:
+
+```bash
+git branch backup/pre-pr-cleanup HEAD
+```
+
+If cleanup goes sideways: `git reset --hard backup/pre-pr-cleanup`. Delete the backup
+ref only after the PR is merged.
+
+**Never use `git reset --hard` to discard committed work** without a backup ref first.
+The reflog is a fallback, but it is time-bounded (90 days default) and harder to
+navigate than a named ref.
+
+#### Preferred path: `rebase --autosquash`
+
+If the messy commits were created with `git commit --fixup=<sha>` or
+`git commit --squash=<sha>` during the session, one non-interactive command handles
+everything:
+
+```bash
+GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash $(git merge-base HEAD main)
+```
+
+`GIT_SEQUENCE_EDITOR=true` accepts the autosquash-generated todo list without opening
+an editor, so this runs cleanly in an agent context. `rebase -i` does NOT hang — only
+the interactive *editor* would. Replacing the editor with `true` (or a scripted
+command) is the standard non-interactive pattern.
+
+The easier upstream fix: when implementing, use `git commit --fixup=<sha>` the moment
+you realize you're amending earlier work. The implement skill's commit guidance already
+recommends this.
+
+#### Ad-hoc squash (no `--fixup` commits)
+
+For the common case of squashing a specific later commit into the previous one:
+
+```bash
+# In a 4-commit rebase, fold commit #2 into #1 (line numbers 1-based, oldest first)
+GIT_SEQUENCE_EDITOR="sed -i '2s/^pick/fixup/'" git rebase -i HEAD~4
+```
+
+For reordering or more complex edits, write a small script and use it as
+`GIT_SEQUENCE_EDITOR`. Still non-interactive.
+
+#### Simple cases
+
+- Squash ALL commits on the branch into one:
+  `git reset --soft $(git merge-base HEAD main) && git commit -m "..."`
+- Squash the last N adjacent commits:
+  `git reset --soft HEAD~N && git commit -m "..."`
+- Reword the tip commit:
+  `git commit --amend -m "..."`
+
+Avoid `git reset --hard` unless you've created a backup ref and understand exactly
+which commits are being discarded.
+
+#### Recovery
+
+If something goes wrong and no backup ref exists, `git reflog` shows abandoned commit
+SHAs. Cherry-pick them back into place, then delete the bad branch state. This works
+for ~90 days after the commit; after that, gc may have cleaned them up.
 
 ### 3. Push
 

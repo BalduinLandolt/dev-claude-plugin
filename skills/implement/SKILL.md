@@ -42,7 +42,12 @@ Follow the implementation plan's sequence. For each step:
    proceeding.
 3. **Write the implementation** to make the tests pass
 4. **Run tests** — use the project's test command (see CLAUDE.md for the exact commands).
-5. **Commit** with a clear conventional commit message
+5. **Commit** with a clear conventional commit message. If the change amends an
+   earlier commit on the same branch (review-fix, typo correction, forgotten follow-up),
+   use `git commit --fixup=<sha>` instead of a regular commit. These mark themselves
+   for automatic squashing at PR-prep time via
+   `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>` — no manual reset or
+   cherry-pick needed later.
 6. **Log issues** as they occur — append to the issues journal
 
 ### Issue Journal Format
