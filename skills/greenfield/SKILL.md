@@ -120,10 +120,19 @@ Once all documents exist:
 1. Initialize git with an empty commit
 2. Add `.gitignore` (tailored to the tech stack)
 3. Commit the documentation
-4. Create `CLAUDE.md` with the sections that other skills depend on:
+4. Create `CLAUDE.md` by invoking the **`/init` skill** (Claude Code's built-in CLAUDE.md
+   generator). Do not hand-write CLAUDE.md from scratch — let `/init` analyse the repo
+   (docs, README if any, Cursor / Copilot rules if any) and produce a draft, then review
+   and amend the draft so it includes the sections other skills depend on:
    - Project one-liner
-   - **Build & Test Commands** — the standard recipe set (see Phase 5)
+   - **Current state** — note whether the repo is pre-scaffold (docs only) or already
+     scaffolded, so future instances don't try to run commands that don't exist yet
+   - **Build & Test Commands** — the standard recipe set (see Phase 5), plus how to run
+     a single test
    - **Architecture** — brief summary (detail goes in convention files)
+   - **Non-obvious constraints** — things reviewers and implementers need to know that
+     aren't reconstructable from the code (append-only invariants, transactional ordering,
+     thin-frontend rules, etc.)
    - **Documentation Index** — one-line descriptions of all doc locations, including
      `.claude/conventions/` ("Project-specific review criteria for each reviewer agent")
    - If the project uses behavioral specs, a **Behavioral Specifications** section listing
