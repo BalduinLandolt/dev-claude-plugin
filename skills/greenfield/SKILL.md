@@ -145,7 +145,20 @@ Once all documents exist:
 
 Based on the tech stack:
 
-1. Set up the dev environment (Nix flake, or whatever the project uses)
+1. **Set up the dev environment using a Nix flake** — this is the default; only use
+   something else if the user has a clear reason to. Specifically:
+   - Write a `flake.nix` declaring all system-level tooling (language toolchain, build
+     tools, linters, platform libraries, any project-specific CLIs) so a contributor
+     with only Nix installed can enter the full dev shell in one command.
+   - Add a `.envrc` containing `use flake` so direnv auto-loads the shell on `cd` into
+     the project. If the user doesn't have direnv installed, call it out — it's part
+     of the expected workflow.
+   - If the project uses any project-specific CLIs that aren't in nixpkgs (e.g.
+     `allium` for Allium specs), attempt to package them via `rustPlatform.buildRustPackage`
+     / equivalent. If that's non-trivial, leave a commented-out derivation skeleton in
+     the flake with instructions for the user to enable it later.
+   - Run `nix develop` end-to-end on your machine before committing to confirm the
+     shell actually assembles.
 2. Create the minimal project scaffold (compiles and runs)
 3. Set up a command runner with **standard recipes as strong defaults** — propose these
    unless the user objects:
@@ -157,7 +170,8 @@ Based on the tech stack:
    - Plus project-specific recipes as needed (e.g., `just test-all` for slow tests)
    - If the user prefers a different tool (make, cargo-make, npm scripts), adapt the
      recipe names but keep the same standard interface
-4. Set up CI (GitHub Actions or similar)
+4. Set up CI (GitHub Actions or similar) — the CI job should enter the Nix dev shell
+   (`nix develop -c ...`) so it runs in the same environment as local development.
 5. Commit each piece separately with clear messages
 
 ## Phase 6: Build the Agent Harness
