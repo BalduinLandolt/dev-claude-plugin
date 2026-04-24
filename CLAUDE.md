@@ -47,3 +47,8 @@ agents/
 - Agent files use YAML frontmatter (`name`, `description`, `model`, `tools`) followed by Markdown instructions.
 - All reviewer agents must output in the standardized format: `## [Type] Review` with `### Critical`, `### Warning`, `### Suggestion`, `### Summary` sections.
 - Skills reference consuming-project paths (CLAUDE.md, `.claude/conventions/`, `docs/design/plans/`) — these are paths in projects that install the plugin, not paths in this repo.
+
+## Releasing
+
+- **Bump the version in `.claude-plugin/plugin.json` on every change before pushing to `main`.** Claude Code's plugin auto-update mechanism keys off this version field, so unbumped pushes do not propagate to installed clients. Use semver: patch for doc/wording fixes, minor for new skills/agents or behavioural additions, major for breaking changes to skill contracts.
+- **Pushing directly to `main` is acceptable in this repo** as long as the version bump above is included in the push. No PR is required; this is a solo-maintained plugin and the version bump is the release gate. Still run the git preflight checks (right repo, right branch, recent history) before pushing.
