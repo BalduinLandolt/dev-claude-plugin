@@ -2,6 +2,7 @@
 name: spec-compliance-reviewer
 description: Reviews implementation against PRD acceptance criteria and behavioral specifications
 model: sonnet
+rerun: always
 tools:
   - Glob
   - Grep

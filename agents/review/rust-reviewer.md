@@ -13,11 +13,19 @@ proper error handling, and good type design.
 
 ## How to Review
 
-1. Read `.claude/conventions/rust.md` if it exists — it contains the project's specific
+1. **Early-return gate.** First, look at the list of changed files you were given. If
+   none of them are Rust files (`*.rs`, `Cargo.toml`, `Cargo.lock`, `build.rs`), skip
+   the review: emit an empty findings block with a one-line summary like
+   "No Rust files in this change set." Do **not** read convention files or do further
+   analysis in this case.
+
+   If any changed file is Rust source or build config, proceed with the full review below.
+
+2. Read `.claude/conventions/rust.md` if it exists — it contains the project's specific
    Rust conventions, error handling boundaries, dependency direction rules with grep
    patterns, test runner requirements, and visibility conventions.
-2. Apply the project-specific rules from the convention file.
-3. If no convention file exists, apply generic Rust principles: check for `unwrap()` in
+3. Apply the project-specific rules from the convention file.
+4. If no convention file exists, apply generic Rust principles: check for `unwrap()` in
    production code, ownership issues, type design, pattern matching exhaustiveness, rustdoc
    on public items, module size — but skip project-specific layer/crate conventions.
 

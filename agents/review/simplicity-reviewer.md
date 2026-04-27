@@ -1,7 +1,7 @@
 ---
 name: simplicity-reviewer
 description: Reviews code for unnecessary complexity, over-engineering, premature abstractions, and code that could be simpler
-model: sonnet
+model: haiku
 tools:
   - Glob
   - Grep

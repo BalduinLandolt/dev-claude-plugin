@@ -53,9 +53,21 @@ that truly require their input.
 
 ### 5. Re-Review
 
-After fixing, spawn **all reviewers again** on the updated plan. Every round uses the
-full reviewer set — do not skip reviewers or reduce the set on subsequent rounds. Repeat
-until no critical or warning findings remain. Only then is the plan considered reviewed.
+After fixing, spawn a **reduced reviewer set** for round 2+. The set is the union of:
+
+- **Always-rerun reviewers**: any reviewer whose frontmatter has `rerun: always`. Read
+  the frontmatter of each discovered reviewer file to determine this.
+- **Reviewers that flagged**: any reviewer that produced a Critical or Warning finding
+  in the previous round.
+- **Orchestrator-judged reviewers**: any reviewer that you, as the orchestrator, judge
+  may now be relevant given the plan revisions you made. Use judgment — if a revision
+  obviously affects a concern that a clean reviewer covers, include them.
+
+Reviewers that were clean in the previous round, are not `rerun: always`, and aren't
+flagged by your judgment do **not** re-run. They're considered done for this loop.
+
+Repeat until no critical or warning findings remain among the reviewers that ran. Only
+then is the plan considered reviewed.
 
 ### 6. Update Status
 

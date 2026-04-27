@@ -66,20 +66,33 @@ Follow the implementation plan's sequence. For each step:
 
 ## Review Checkpoints
 
-Run the `/dev:review-impl` skill automatically at these points — do not ask permission first,
-review is part of implementation:
+Two checkpoints, run automatically — do not ask permission first, review is part of
+implementation:
 
-- After tests are written (before implementation) — do tests specify the right behavior?
-- After implementation is complete — is the code correct and clean?
-- Before committing final changes — last quality gate
+### Checkpoint 1: After tests are written, before implementation
+
+Spawn the `test-reviewer` agent (single agent, by name — do **not** call `/dev:review-impl`
+here). Pass it the relevant plan/PRD/spec and the list of test files just written. Its
+sole job is to verify the tests correctly encode the plan's intent.
+
+This is intentionally a focused, single-reviewer pass. The full reviewer set has little
+to add when no implementation exists yet, so spawning all of them here is wasteful.
+
+Fix any Critical or Warning findings, then proceed to implementation. Do not loop the
+test-reviewer — one pass is enough.
+
+### Checkpoint 2: After implementation is complete
+
+Run the `/dev:review-impl` skill. This is the single comprehensive review and serves as
+the pre-commit quality gate — there is no separate "before committing" checkpoint.
 
 If the project uses behavioral specs (check CLAUDE.md) for the area being modified, run
-`/allium:weed` after implementation is complete to check for spec-code divergences. Fix any
-divergences before the final review checkpoint.
+`/allium:weed` before this checkpoint to check for spec-code divergences. Fix any
+divergences first.
 
-Each review runs the full loop: all reviewers, fix findings, re-review until clean. Only
-present the result to the user when the implementation is complete and all review rounds
-have converged.
+The review runs the full loop: discovered reviewers, fix findings, re-review until clean.
+Only present the result to the user when the implementation is complete and the review
+has converged.
 
 ## Developer Documentation
 

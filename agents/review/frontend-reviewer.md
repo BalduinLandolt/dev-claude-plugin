@@ -13,13 +13,20 @@ rendering layer and follows proper patterns for communicating with the backend.
 
 ## How to Review
 
-1. Read `.claude/conventions/frontend.md` if it exists — it contains the project's specific
+1. **Early-return gate.** First, look at the list of changed files you were given. If
+   none of them are frontend files (no UI components, no styles, no client-side code),
+   skip the review: emit an empty findings block with a one-line summary like
+   "No frontend files in this change set." Do **not** read convention files or do
+   further analysis in this case.
+
+   If any changed file is a frontend file, proceed with the full review below.
+
+2. Read `.claude/conventions/frontend.md` if it exists — it contains the project's specific
    frontend rules, framework context, anti-patterns to check for, and what not to flag.
-2. Apply the project-specific rules from the convention file.
-3. If no convention file exists, apply generic frontend principles: check for business logic
+3. Apply the project-specific rules from the convention file.
+4. If no convention file exists, apply generic frontend principles: check for business logic
    in UI code, state management concerns — but skip framework-specific and locale-specific
-   checks. If the project has no frontend files, state this in the summary and produce no
-   findings.
+   checks.
 
 ## Output Format
 

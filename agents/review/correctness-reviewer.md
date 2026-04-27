@@ -2,6 +2,7 @@
 name: correctness-reviewer
 description: Reviews code or plans for logical errors, wrong calculations, missed requirements, and incorrect behavior
 model: sonnet
+rerun: always
 tools:
   - Glob
   - Grep
