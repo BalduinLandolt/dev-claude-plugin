@@ -11,11 +11,12 @@ A Claude Code plugin (`dev`) that provides a structured agent workflow harness f
 ```
 .claude-plugin/          Plugin metadata (plugin.json, marketplace.json)
 skills/                  Skill definitions — each subdirectory has a SKILL.md
-  next/                  Full workflow orchestrator (investigate → learn)
-  investigate/           Propose the next task from a project plan
-  plan/                  Create PRD and implementation plans
-  review-plan/           Spawn reviewer agents on plans, loop until clean
-  implement/             Execute approved plans test-first
+  next/                  Workflow orchestrator (sizes the task, dispatches to a tier)
+  ideate/                Upstream of investigate — explore problems and solutions
+  investigate/           Propose a task (from project plan, or from argument)
+  plan/                  Create planning documents (light: plan only; full: PRD + plan)
+  review-plan/           Spawn reviewer agents on plans, loop until clean (full mode)
+  implement/             Execute approved plans, with mode-appropriate review depth
   review-impl/           Spawn reviewer agents on code, loop until clean
   learn/                 Triage issues journal into doc improvements
   prepare-pr/            Clean up git history and create a PR
@@ -29,7 +30,13 @@ agents/
 
 ## Architecture
 
-**Workflow pipeline**: `next` is the top-level orchestrator skill. It invokes the other skills in sequence: `investigate` → `plan` → `review-plan` → (human approval) → `implement` (which internally calls `review-impl`) → (human verification) → `learn` → `prepare-pr`. Skills invoke each other via the `Skill` tool.
+**Workflow pipeline**: `next` is the top-level orchestrator skill. It accepts an optional task description as argument (otherwise picks from the project plan), runs `investigate`, then prompts the user to pick a workflow mode (`minimal`, `light`, or `full`). The mode determines which downstream skills run and how heavy each one is:
+
+- **minimal** — built-in plan mode → `implement` (single comprehensive review, no loop) → human verify → optional PR.
+- **light** — `plan` (single document, no PRD) → human approval → `implement` (full review-impl loop) → human verify → `learn` → `prepare-pr`.
+- **full** — `plan` (PRD + plan) → `review-plan` → human approval → `implement` (test-reviewer + full review-impl loop) → human verify → `learn` → `prepare-pr`.
+
+`ideate` is upstream of `investigate` and optional. Use it to explore problems or sanity-check ideas before committing to a workflow run. Skills invoke each other via the `Skill` tool.
 
 **Agent spawning**: Skills spawn agents via the `Agent` tool. Research agents are read-only (Glob/Grep/Read only). Reviewer agents are also read-only. The doc-improver agent can write. All sub-agents use the `sonnet` model (set in frontmatter).
 

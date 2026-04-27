@@ -1,6 +1,7 @@
 ---
 name: review-impl
-description: Spawn all discovered reviewer agents in parallel to review implementation code. Loop until reviewers find no issues.
+description: Spawn all discovered reviewer agents in parallel to review implementation code. Loops until reviewers find no issues, unless invoked in single-round mode.
+argument-hint: "[mode=<minimal|light|full>]"
 allowed-tools:
   - Glob
   - Grep
@@ -15,6 +16,18 @@ allowed-tools:
 # Review Implementation
 
 Run the implementation review loop: spawn reviewers, fix or escalate, repeat until clean.
+
+## Argument: mode
+
+If the orchestrator passes `mode=minimal` (or `single-round=true`), run **round 1 only**
+and stop after fixes — do not loop. This is appropriate for trivial changes where the
+risk of a regression hidden behind a fix is low.
+
+For `mode=light`, `mode=full`, or no mode argument: run the full loop semantics
+described below (round 1 spawns all discovered reviewers; round 2+ uses the reduced
+set; repeat until no Critical or Warning findings remain).
+
+The default is loop semantics. Treat single-round as an explicit opt-in.
 
 ## Steps
 
@@ -83,6 +96,11 @@ and make a judgment call. The user should only see questions that truly require 
 Log any fixes to the issues journal.
 
 ### 6. Re-Review
+
+**Skip this step entirely in single-round mode** (`mode=minimal`). Round 1 + fixes is
+the whole review. Stop here.
+
+For other modes:
 
 After fixing, spawn a **reduced reviewer set** for round 2+. The set is the union of:
 

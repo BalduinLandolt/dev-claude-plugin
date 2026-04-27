@@ -8,11 +8,13 @@ from completed work.
 
 The plugin provides a full development workflow:
 
-1. **Investigate** — read the project plan, propose the next task
-2. **Plan** — create PRD and implementation plans collaboratively
-3. **Review** — spawn reviewer agents in parallel, loop until clean
-4. **Implement** — execute the plan test-first, with review checkpoints
-5. **Learn** — process issues into documentation improvements
+1. **Ideate** *(optional)* — turn a vague problem or half-formed idea into a concrete next step
+2. **Investigate** — pick from the project plan, or scope a user-provided task
+3. **Size** — choose a workflow tier (minimal, light, full) appropriate to the task
+4. **Plan** — produce planning documents matched to the tier
+5. **Review** — spawn reviewer agents in parallel, loop until clean (light, full)
+6. **Implement** — execute the plan with mode-appropriate review checkpoints
+7. **Learn** — process issues into documentation improvements (light, full)
 
 Plus supporting skills:
 
@@ -24,11 +26,12 @@ Plus supporting skills:
 
 | Skill | Purpose |
 |---|---|
-| `/dev:next` | Run the full workflow for the next project plan item |
-| `/dev:investigate` | Propose the next task to work on |
-| `/dev:plan` | Create planning documents (PRD, implementation plans) |
-| `/dev:review-plan` | Review a plan with all discovered reviewers |
-| `/dev:implement` | Execute an approved plan |
+| `/dev:next [task]` | Run the workflow for the next plan item, or for a task description given as argument |
+| `/dev:ideate` | Turn a vague problem or half-formed idea into a concrete next step |
+| `/dev:investigate` | Propose the next task to work on (from plan or from argument) |
+| `/dev:plan` | Create planning documents (light: plan only; full: PRD + plan) |
+| `/dev:review-plan` | Review a plan with all discovered reviewers (full mode) |
+| `/dev:implement` | Execute an approved plan with mode-appropriate review checkpoints |
 | `/dev:review-impl` | Review implementation code with all discovered reviewers |
 | `/dev:learn` | Process the issues journal into doc improvements |
 | `/dev:prepare-pr` | Clean up history, push, and create a PR |

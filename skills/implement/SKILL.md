@@ -1,7 +1,7 @@
 ---
 name: implement
-description: Execute an approved plan — write tests and code, log issues, run reviewers at checkpoints
-argument-hint: "[path to approved plan]"
+description: Execute an approved plan — write tests and code, log issues, run reviewers at checkpoints. Behavior adapts to the workflow mode (minimal, light, full).
+argument-hint: "[path to approved plan]; mode=<minimal|light|full>"
 allowed-tools:
   - Glob
   - Grep
@@ -18,14 +18,18 @@ allowed-tools:
 
 # Implement
 
-Execute the approved implementation plan. Test-first where specified by the testing
-strategy.
+Execute the approved implementation plan. The orchestrator passes the workflow `mode`,
+which adjusts review depth, documentation expectations, and the issues journal.
 
 ## Setup
 
-1. Read the approved plan
-2. Create a feature branch: `<type>/<number>-<slug>` (see docs/process/GIT_WORKFLOW.md)
-3. Create the issues journal: `docs/design/plans/<task>/issues.md`
+1. Read the approved plan (skip in **minimal** mode — there is no plan document; work
+   from the in-session plan that came out of Claude Code's built-in plan mode).
+2. Create a feature branch: `<type>/<number>-<slug>` (see docs/process/GIT_WORKFLOW.md).
+   In minimal mode, if the repo allows direct-to-main (per project CLAUDE.md), you may
+   work on `main` directly; otherwise create a branch as usual.
+3. Create the issues journal: `docs/design/plans/<task>/issues.md`. **Skip in minimal
+   mode** — minimal tasks are not worth the journal overhead.
 
 ## Execution
 
@@ -66,49 +70,65 @@ Follow the implementation plan's sequence. For each step:
 
 ## Review Checkpoints
 
-Two checkpoints, run automatically — do not ask permission first, review is part of
-implementation:
+Behavior depends on mode.
 
-### Checkpoint 1: After tests are written, before implementation
+### Minimal mode
 
-Spawn the `test-reviewer` agent (single agent, by name — do **not** call `/dev:review-impl`
-here). Pass it the relevant plan/PRD/spec and the list of test files just written. Its
-sole job is to verify the tests correctly encode the plan's intent.
+- **No test-reviewer checkpoint.** Minimal tasks usually don't introduce new tests; if
+  they do, the test review is folded into the final review.
+- **One final review pass** when implementation is complete: invoke `/dev:review-impl`
+  with `mode=minimal`. The skill respects this argument and runs round 1 only,
+  stopping after fixes. Do not call it without the mode argument — that triggers full
+  loop semantics.
+- Skip the `/allium:weed` step.
 
-This is intentionally a focused, single-reviewer pass. The full reviewer set has little
-to add when no implementation exists yet, so spawning all of them here is wasteful.
+### Light mode
 
-Fix any Critical or Warning findings, then proceed to implementation. Do not loop the
-test-reviewer — one pass is enough.
+- **Test-reviewer checkpoint** if the task wrote new tests. Spawn the `test-reviewer`
+  agent (single agent, by name — do **not** call `/dev:review-impl` here). Pass it the
+  plan and the list of test files. Fix any Critical or Warning findings. Do not loop.
+  If the task wrote no new tests, skip this checkpoint.
+- **Final review** when implementation is complete: run `/dev:review-impl` with its
+  full loop semantics (discover reviewers, fix findings, re-review with the round-2+
+  reduced set until clean).
+- Run `/allium:weed` before the final review if the project uses behavioral specs and
+  the change touches a spec'd area.
 
-### Checkpoint 2: After implementation is complete
+### Full mode
 
-Run the `/dev:review-impl` skill. This is the single comprehensive review and serves as
-the pre-commit quality gate — there is no separate "before committing" checkpoint.
+- **Test-reviewer checkpoint** after tests are written, before implementation. Spawn
+  the `test-reviewer` agent. Fix any Critical or Warning findings. Do not loop.
+- **Final review** when implementation is complete: run `/dev:review-impl` with its
+  full loop semantics.
+- Run `/allium:weed` before the final review if applicable (same as light).
 
-If the project uses behavioral specs (check CLAUDE.md) for the area being modified, run
-`/allium:weed` before this checkpoint to check for spec-code divergences. Fix any
-divergences first.
-
-The review runs the full loop: discovered reviewers, fix findings, re-review until clean.
-Only present the result to the user when the implementation is complete and the review
-has converged.
+In all modes, reviews run automatically — do not ask permission first; review is part of
+implementation. Only present the result to the user when implementation is complete and
+the relevant reviews have converged.
 
 ## Developer Documentation
 
 After implementation is complete and reviewers are clean, update the project's developer
 documentation (see CLAUDE.md for location):
 
-- If this task introduced a new module or subsystem, create a new page
-- If this task modified an existing area, update the corresponding page
-- Describe what the code does, how it fits together, and key decisions made
-- This is descriptive documentation — reflect what was built, not the plan
+- If this task introduced a new module or subsystem, create a new page.
+- If this task modified an existing area, update the corresponding page.
+- Describe what the code does, how it fits together, and key decisions made.
+- This is descriptive documentation — reflect what was built, not the plan.
+
+**Minimal mode:** skip developer documentation updates unless the task genuinely
+introduced, removed, or restructured developer-facing surface area (a new module, a
+removed module, a changed public API). Minimal tasks are typically too small to warrant
+doc churn.
 
 ## User Guide
 
 If the task changes user-facing behavior (new screens, changed workflows, new features
 visible to the user), update the user guide as specified in CLAUDE.md. Skip this step for
 purely internal changes (backend refactoring, test infrastructure, etc.).
+
+**Minimal mode:** still applies if the change is genuinely user-visible (a fixed bug
+the user could see, a tweaked label). Otherwise skip.
 
 ## Completion
 
