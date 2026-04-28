@@ -14,6 +14,27 @@ allowed-tools:
 
 Gather context and propose a task. Two modes depending on whether an argument is given.
 
+## Backlog check (both modes, run first)
+
+Before either mode, check whether the project keeps a backlog of "by the way" ideas
+that surfaced mid-task and have not yet been triaged. Convention: a `BACKLOG.md`
+file sitting next to the project plan (the project plan's location is declared in
+CLAUDE.md). If the file exists and contains entries under a "## Open" or "## Open
+entries" heading:
+
+1. List the open entries to the user (titles only, not full bodies).
+2. Use `AskUserQuestion` to ask whether to triage them now — promote one or more
+   into the project plan as new tasks, defer (leave in the backlog), or proceed
+   with the originally intended next task without triaging.
+3. If the user chooses to triage, walk through entries one at a time with the
+   user, updating `BACKLOG.md` and `PROJECT_PLAN.md` as decided. Then resume the
+   regular investigate flow below.
+4. If the user chooses to proceed, continue with the regular flow.
+
+If `BACKLOG.md` does not exist, or has no open entries, skip this section silently.
+This check is generic — it should not assume any particular project structure
+beyond "project plan and backlog live in the same directory".
+
 ## Mode A: No argument — pick from project plan
 
 1. Read the project plan (see CLAUDE.md for location). Find the next unchecked item
