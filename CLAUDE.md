@@ -48,6 +48,12 @@ agents/
 
 **Allium integration**: When consuming projects use behavioral specs (`.allium` files), the workflow integrates with Allium skills (`/allium:elicit`, `/allium:tend`, `/allium:propagate`, `/allium:weed`) during planning and implementation.
 
+## Documentation index
+
+- `README.md` — user-facing plugin overview (install, modes, what each skill does).
+- `NOTES.md` — deferred optimisations: ideas explored in depth with decision history but not yet applied.
+- `BACKLOG.md` — holding pen for "by the way" ideas surfaced mid-task; triaged before starting the next task.
+
 ## Editing conventions
 
 - Skill files use YAML frontmatter (`name`, `description`, `allowed-tools`, optionally `argument-hint`) followed by Markdown instructions.
