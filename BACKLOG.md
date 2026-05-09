@@ -61,15 +61,16 @@ same context bloat the orchestrator has, just one layer down. Instead:
 Termination criteria map onto current `/dev:implement` completion: plan
 steps all checked off, tests pass, reviewers clean. No new logic.
 
-#### Probably never: plan drafting in subagents
+#### Needs investigation: plan drafting in subagents
 
 Plan drafting is genuinely conversational (`/dev:plan` Phase 3 iterates
 with the user across multiple question rounds). A subagent can't run a
-back-and-forth dialogue, and faking it via "subagent returns questions,
-orchestrator escalates, second subagent finalises" is fragile and
-multiplies the spawn count. Plan drafting should stay in the orchestrator
-where the conversation already lives, and where the user expects to find
-the agent they've been talking to.
+back-and-forth dialogue directly, and the obvious workarounds (subagent
+returns questions, orchestrator escalates, second subagent finalises)
+look fragile and multiply the spawn count. The open question is whether
+there's a topology that preserves the conversational quality without
+keeping all of plan drafting in the orchestrator. Parked until someone
+sketches one that doesn't have those failure modes.
 
 #### Open design questions
 
@@ -103,8 +104,8 @@ structured summary. Updated `/dev:next` Phase 3 (full mode) and
 of invoking `/dev:review-plan` or `/dev:review-impl` directly. The
 orchestrator's context only sees the summary, not the per-reviewer
 findings or fix history. Stretch (implementation as coordinator +
-stateless workers) and the "probably never" tier remain in the open
-entry above.
+stateless workers) and the "needs investigation" tier remain in the
+open entry above.
 
 ### Decouple `learn` from the live session context
 
