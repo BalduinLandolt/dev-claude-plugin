@@ -60,9 +60,14 @@ Follow the implementation plan's sequence. For each step:
 
 ### Issue Journal Format
 
+Write entries so a fresh session can triage them without conversation history —
+name the file, symbol, error, and approach explicitly rather than relying on
+session shorthand ("the thing we tried earlier", "that test").
+
 ```markdown
 ## Issue: [short description]
 **When**: [during which step]
+**Files**: [paths involved — omit if not applicable]
 **What happened**: [description]
 **What I tried**: [approaches attempted]
 **Resolution**: [how it was resolved, or "unresolved"]

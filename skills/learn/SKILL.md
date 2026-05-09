@@ -29,7 +29,13 @@ neither is available, ask the user.
 ### 2. Check for Issues
 
 Read `docs/design/plans/<task>/issues.md`. If the file doesn't exist or is empty, skip the
-learning phase — nothing went wrong.
+learning phase — nothing went wrong. If only `issues-processed.md` exists, the journal has
+already been triaged in a previous run — skip. If both files exist (a rare case where
+implementation resumed after a previous learn), treat `issues.md` as the active journal
+and proceed normally.
+
+This skill is intended to run after implementation is complete. Running it mid-task
+renames the journal and prevents further issue logging until the rename is reverted.
 
 ### 3. Triage and Improve
 
@@ -48,7 +54,9 @@ Review the doc-improver's changes. Ensure they:
 
 ### 5. Commit
 
-Commit the documentation improvements with a message like:
+Rename `docs/design/plans/<task>/issues.md` to `docs/design/plans/<task>/issues-processed.md`
+(same directory) so re-running `/dev:learn` on this task is a no-op. Stage the rename
+alongside the doc improvements and commit them together with a message like:
 `docs: update [doc] based on learnings from task [number]`
 
 ## Principle

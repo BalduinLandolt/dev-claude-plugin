@@ -19,33 +19,6 @@ fresh "by the way" ideas that haven't been thought through.
 
 ## Open entries
 
-### Decouple `learn` from the live session context
-
-A full implementation cycle (plan → implement → review → verify → learn)
-can easily span multiple Claude sessions: a plan reviewed today,
-implemented tomorrow, finished next week. Today's `/dev:learn` triage
-relies on the in-session issues journal and whatever the implementer
-remembers — context that evaporates when the session ends or compacts.
-
-Worth designing so the learning phase is reconstructable from artifacts
-on disk, not from session memory:
-
-- Make sure the issues journal lives in a known on-disk location
-  written incrementally during `implement`, not assembled in-context
-  at the end.
-- Capture enough metadata per entry (file, phase, tag, short note) that
-  a fresh session can triage it without needing the original
-  conversation.
-- Have `/dev:learn` accept a journal path argument so it can be run
-  later as a standalone step against a saved journal.
-- Decide what happens to the journal across sessions: clear on commit,
-  archive per-task, or accumulate. Probably per-task with a clear
-  lifecycle (created at plan time, consumed by learn, then deleted or
-  archived).
-
-Without this, learnings get lost whenever a task crosses a session
-boundary, which is most non-trivial tasks.
-
 ### Push more of the loop into subagents to keep the orchestrator context empty
 
 Today the outer agent (the one driving `/dev:next`) reads plans, drafts
@@ -103,6 +76,16 @@ Open design questions:
   whether the existing skills already work that way or need adapting.
 
 ## Recently promoted
+
+### Decouple `learn` from the live session context
+
+Done. The on-disk-journal and per-task-path concerns were already in place
+(`docs/design/plans/<task>/issues.md`, written incrementally; `/dev:learn`
+takes a task slug). This round (1) tightened the journal format with a
+`Files` field and a self-contained-entries directive in `implement` so a
+fresh session can triage without conversation history, and (2) gave the
+journal an explicit lifecycle: `learn` renames it to `issues-processed.md`
+in the same commit as the doc improvements, making re-runs a no-op.
 
 ### Promote `BACKLOG.md` from invoicer-local to a plugin convention
 

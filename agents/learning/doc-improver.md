@@ -15,7 +15,8 @@ categorize each issue, and apply the appropriate fix.
 
 ## Input
 
-You receive the path to an issues journal (`docs/design/plans/<task>/issues.md`).
+You receive the path to the active issues journal (typically
+`docs/design/plans/<task>/issues.md`, before `/dev:learn` renames it post-triage).
 
 ## Step 1: Triage
 

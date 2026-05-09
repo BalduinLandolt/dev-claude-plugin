@@ -170,4 +170,5 @@ Ask the user to:
   sizing (implicit via AskUserQuestion), plan approval (light, full), and verification.
 - **Log issues as they occur** during implementation to
   `docs/design/plans/<task>/issues.md` (light, full only — minimal has no plan dir).
+  `/dev:learn` consumes this file and renames it to `issues-processed.md` afterwards.
 - If you're unsure about a decision, ask the user rather than guessing.
