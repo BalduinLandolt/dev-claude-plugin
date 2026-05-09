@@ -81,21 +81,22 @@ Behavior depends on mode.
 
 - **No test-reviewer checkpoint.** Minimal tasks usually don't introduce new tests; if
   they do, the test review is folded into the final review.
-- **One final review pass** when implementation is complete: invoke `/dev:review-impl`
-  with `mode=minimal`. The skill respects this argument and runs round 1 only,
-  stopping after fixes. Do not call it without the mode argument — that triggers full
-  loop semantics.
+- **One final review pass** when implementation is complete: spawn the
+  `review-impl-coordinator` agent with `mode=minimal` in its prompt. The coordinator
+  invokes `/dev:review-impl` in its own context, runs round 1 only (because of the
+  mode), and returns a structured summary. You only see the summary, not the
+  per-reviewer findings.
 - Skip the `/allium:weed` step.
 
 ### Light mode
 
 - **Test-reviewer checkpoint** if the task wrote new tests. Spawn the `test-reviewer`
-  agent (single agent, by name — do **not** call `/dev:review-impl` here). Pass it the
-  plan and the list of test files. Fix any Critical or Warning findings. Do not loop.
-  If the task wrote no new tests, skip this checkpoint.
-- **Final review** when implementation is complete: run `/dev:review-impl` with its
-  full loop semantics (discover reviewers, fix findings, re-review with the round-2+
-  reduced set until clean).
+  agent (single agent, by name — do **not** spawn the review-impl-coordinator here).
+  Pass it the plan and the list of test files. Fix any Critical or Warning findings.
+  Do not loop. If the task wrote no new tests, skip this checkpoint.
+- **Final review** when implementation is complete: spawn the `review-impl-coordinator`
+  agent with `mode=light` in its prompt. The coordinator invokes `/dev:review-impl`
+  with its full loop semantics in its own context and returns a structured summary.
 - Run `/allium:weed` before the final review if the project uses behavioral specs and
   the change touches a spec'd area.
 
@@ -103,13 +104,15 @@ Behavior depends on mode.
 
 - **Test-reviewer checkpoint** after tests are written, before implementation. Spawn
   the `test-reviewer` agent. Fix any Critical or Warning findings. Do not loop.
-- **Final review** when implementation is complete: run `/dev:review-impl` with its
-  full loop semantics.
+- **Final review** when implementation is complete: spawn the `review-impl-coordinator`
+  agent with `mode=full` in its prompt. The coordinator invokes `/dev:review-impl` with
+  its full loop semantics in its own context and returns a structured summary.
 - Run `/allium:weed` before the final review if applicable (same as light).
 
 In all modes, reviews run automatically — do not ask permission first; review is part of
 implementation. Only present the result to the user when implementation is complete and
-the relevant reviews have converged.
+the relevant reviews have converged. The coordinator's structured summary is what you
+present (alongside the actual implementation diff).
 
 ## Developer Documentation
 

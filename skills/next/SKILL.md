@@ -66,20 +66,24 @@ Make a recommendation based on what investigate found. Phrase it as
 
 Set the chosen mode as a variable for the rest of the workflow.
 
-### How the mode propagates to downstream skills
+### How the mode propagates to downstream skills and coordinators
 
-When you invoke `/dev:plan`, `/dev:implement`, or `/dev:review-impl` via the Skill tool,
-include the mode in the args string using the convention `mode=<value>`. Examples:
+When you invoke `/dev:plan` or `/dev:implement` via the Skill tool, include the mode in
+the args string using the convention `mode=<value>`. Examples:
 
 - `/dev:plan` with args: `"<task description>; mode=light"`
 - `/dev:implement` with args: `"<path to plan>; mode=full"` (or, in minimal mode where
   there is no plan path, `"mode=minimal"`)
-- `/dev:review-impl` with args: `"mode=minimal"` (only needed for minimal — the others
-  use loop semantics by default)
 
 Each downstream skill parses `mode=<value>` from its args and adapts. If you forget the
-mode, the skill falls back to its safe default (`full` for `/dev:plan`, looping
-semantics for `/dev:review-impl`), which costs more but preserves coverage.
+mode, the skill falls back to its safe default (`full` for `/dev:plan`), which costs
+more but preserves coverage.
+
+The review loops are wrapped by coordinator subagents (`review-plan-coordinator`,
+`review-impl-coordinator`) rather than invoked as skills directly. Pass the mode in the
+agent's prompt rather than as a `mode=<value>` arg. The coordinator then invokes the
+underlying skill with the right args internally. See Phases 3 and 4 for the spawn
+points.
 
 ### Recording the mode persistently
 
@@ -112,10 +116,14 @@ session breaks, restart from `/dev:next`.
 
 - Run `/dev:plan` with the chosen mode. It will produce a PRD plus an implementation
   plan document.
-- Run `/dev:review-plan` immediately. Do not ask permission first; review is part of
-  planning. The review skill loops internally until reviewers find no meaningful
-  issues.
-- Present the polished, reviewed plan to the user. Wait for explicit approval.
+- Spawn the `review-plan-coordinator` agent immediately. Do not ask permission first;
+  review is part of planning. Pass the plan directory path
+  (`docs/design/plans/<task>/`) explicitly in the agent's prompt — the coordinator
+  needs it to invoke `/dev:review-plan` correctly. The coordinator runs the skill in
+  its own context, loops until clean, and returns a structured summary. You only see
+  the summary, not the per-reviewer findings or fix history.
+- Present the polished, reviewed plan to the user along with the coordinator's
+  summary. Wait for explicit approval.
 - Once approved, update plan frontmatter: `status: approved`.
 
 ## Phase 4: Implement + Review
@@ -125,11 +133,12 @@ plan from ExitPlanMode). The implement skill runs review checkpoints internally.
 
 Mode-specific behavior is handled by `/dev:implement`:
 - **Minimal**: skip the test-reviewer checkpoint if no new tests; run a single
-  comprehensive review at the end (one round, no loop).
-- **Light**: skip the test-reviewer checkpoint if no new tests; run the full
-  `/dev:review-impl` loop at the end.
-- **Full**: run all checkpoints — test-reviewer after tests are written, full
-  `/dev:review-impl` loop after implementation is complete.
+  comprehensive review at the end (one round, no loop) via `review-impl-coordinator`
+  with `mode=minimal`.
+- **Light**: skip the test-reviewer checkpoint if no new tests; run the full review
+  loop at the end via `review-impl-coordinator` with `mode=light`.
+- **Full**: run all checkpoints — test-reviewer after tests are written, full review
+  loop after implementation is complete via `review-impl-coordinator` with `mode=full`.
 
 Only present the result to the user when implementation is complete and reviewers
 are clean.

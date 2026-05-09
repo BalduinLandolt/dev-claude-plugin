@@ -62,6 +62,16 @@ run. Each reviewer reads project-specific criteria from `.claude/conventions/` f
 ### Learning
 - **doc-improver** — triage implementation issues into documentation fixes
 
+### Coordinator (context-isolation wrappers for review loops)
+- **review-plan-coordinator** — runs `/dev:review-plan` in an isolated subagent
+  context, returns a compact structured summary
+- **review-impl-coordinator** — runs `/dev:review-impl` in an isolated subagent
+  context, returns a compact structured summary
+
+These are spawned by `/dev:next` and `/dev:implement` instead of invoking the review
+skills directly, so the orchestrator's context only sees the summary, not the
+per-reviewer findings or fix history.
+
 ## Installation
 
 ```bash

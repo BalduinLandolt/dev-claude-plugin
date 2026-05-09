@@ -26,6 +26,7 @@ agents/
   research/              Read-only agents spawned during planning (sonnet)
   review/                Reviewer agents spawned at review checkpoints (sonnet)
   learning/              Doc-improver agent for the learn phase (sonnet)
+  coordinator/           Subagents that wrap review loops in isolated contexts (sonnet)
 ```
 
 ## Architecture
@@ -45,6 +46,8 @@ agents/
 **Convention-driven reviews**: Each reviewer agent reads a corresponding convention file from the consuming project's `.claude/conventions/` directory (e.g., `correctness-reviewer` reads `.claude/conventions/correctness.md`). If no convention file exists, the reviewer falls back to generic checks.
 
 **Review loop**: Both `review-plan` and `review-impl` follow the same pattern: spawn all reviewers in parallel → collect findings (Critical/Warning/Suggestion) → fix Critical and Warning findings → re-spawn all reviewers → repeat until clean. The skill itself fixes findings rather than escalating to the user, unless a product decision is genuinely needed.
+
+**Coordinator wrappers (context isolation)**: The orchestrator (`/dev:next` and `/dev:implement`) does not invoke the review skills directly. Instead it spawns `review-plan-coordinator` or `review-impl-coordinator`, which run the underlying skill in their own contexts and return a compact structured summary. This keeps reviewer outputs and fix histories out of the orchestrator's window — the orchestrator only sees the summary, not the per-reviewer findings. The coordinators live in `agents/coordinator/`.
 
 **Allium integration**: When consuming projects use behavioral specs (`.allium` files), the workflow integrates with Allium skills (`/allium:elicit`, `/allium:tend`, `/allium:propagate`, `/allium:weed`) during planning and implementation.
 

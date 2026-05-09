@@ -34,24 +34,8 @@ stage. Skill bodies load into the calling agent's context when invoked via
 the `Skill` tool, so the way to get isolation is to spawn an `Agent` that
 then invokes the skill in *its* context. No skill rewrite needed.
 
-Layered proposal:
-
-#### MVP: review loops as coordinator subagents
-
-Smallest unit of value. `/dev:review-plan` and `/dev:review-impl` are
-already mechanical loops (spawn reviewers, collect findings, fix, re-spawn
-until clean) with structured output. Wrap each loop in a coordinator
-subagent. The orchestrator only sees the final clean artefact plus a short
-summary of what changed during review.
-
-Reasons this is a good MVP:
-
-- No user-in-the-loop during a single round, so the subagent can run to
-  convergence without yielding.
-- Reviewer output is already structured (Critical / Warning / Suggestion).
-- Easy to measure: compare orchestrator-context tokens on one full-tier
-  run before and after.
-- The coordinator role is pure pattern-matching; can run on Sonnet.
+Layered proposal. The MVP layer (review loops as coordinator subagents)
+shipped; see "Recently promoted" below. What remains:
 
 #### Stretch: implementation as coordinator + stateless workers
 
@@ -108,6 +92,19 @@ the agent they've been talking to.
   Code.
 
 ## Recently promoted
+
+### Review loops as coordinator subagents (MVP layer of the subagent-topology entry)
+
+Done. Added `agents/coordinator/review-plan-coordinator.md` and
+`agents/coordinator/review-impl-coordinator.md`, each invoking the
+underlying review skill in its own context and returning a compact
+structured summary. Updated `/dev:next` Phase 3 (full mode) and
+`/dev:implement` (all three modes) to spawn the coordinator instead
+of invoking `/dev:review-plan` or `/dev:review-impl` directly. The
+orchestrator's context only sees the summary, not the per-reviewer
+findings or fix history. Stretch (implementation as coordinator +
+stateless workers) and the "probably never" tier remain in the open
+entry above.
 
 ### Decouple `learn` from the live session context
 
