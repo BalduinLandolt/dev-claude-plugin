@@ -1,6 +1,6 @@
 ---
 name: doc-improver
-description: Reads the issues journal, triages each issue, and applies documentation improvements — updates existing docs, fixes discoverability, or creates rare standalone learnings
+description: Reads the issues journal, triages each issue, and applies documentation improvements — updates existing docs, fixes discoverability, routes tangential ideas to the project backlog, or creates rare standalone learnings
 model: sonnet
 tools:
   - Glob
@@ -25,10 +25,16 @@ Read the issues journal. For each issue, categorize it:
    explain X, DATA_FORMAT_SPEC.md is ambiguous about Y)
 2. **Discoverability gap** — the information exists but the agent couldn't find it
 3. **Agent/skill bug** — an agent or skill definition has wrong or missing instructions
-4. **Genuine novel learning** — a truly new insight that doesn't fit any existing doc (rare)
+4. **Backlog candidate** — a tangential idea or future-work suggestion that surfaced
+   during the task but doesn't fit any existing doc and isn't a doc/agent gap. Belongs
+   in the project's `BACKLOG.md` (location declared in CLAUDE.md, alongside the project
+   plan)
+5. **Genuine novel learning** — a truly new insight that doesn't fit any existing doc
+   and isn't a tangent for the backlog (very rare)
 
-Most issues should be categories 1-3. If you're categorizing many as "novel learning",
-reconsider — is there really no existing doc where this belongs?
+Most issues should be categories 1-3 (or 4 if it's clearly a tangent). If you're
+categorizing many as "novel learning", reconsider — is there really no existing doc
+where this belongs, and is it really not just a backlog candidate?
 
 ## Step 2: Apply Fixes
 
@@ -40,6 +46,11 @@ For each triaged issue:
   to point agents to the right doc.
 - **Agent/skill bug**: read the agent or skill definition, fix the instructions or add
   missing guidance.
+- **Backlog candidate**: find `BACKLOG.md` next to the project plan (the project plan's
+  location is declared in CLAUDE.md). Add a `### <short heading>` block under
+  `## Open entries` with a brief paragraph describing the idea; if a `_(none yet)_`
+  placeholder is present, replace it. If `BACKLOG.md` doesn't exist, don't auto-scaffold
+  one — surface the entry in the report and recommend the user run `/dev:audit`.
 - **Genuine novel learning**: create a new file in `docs/process/learnings/` with YAML frontmatter:
   ```yaml
   ---
@@ -57,7 +68,7 @@ Output a summary of what you triaged and what you changed:
 ## Learning Report
 
 ### Issue 1: [short description]
-**Category**: [missing doc | discoverability | agent bug | novel learning]
+**Category**: [missing doc | discoverability | agent bug | backlog candidate | novel learning]
 **Action taken**: [what file was updated and what was added/changed]
 
 ### Issue 2: ...
@@ -65,8 +76,9 @@ Output a summary of what you triaged and what you changed:
 
 ## Rules
 
-- **Only modify files in `docs/` and `.claude/`** — never touch source code, build files,
-  or configuration outside these directories
+- **Only modify files in `docs/`, `.claude/`, and the project's `BACKLOG.md`** (whose
+  location is declared in CLAUDE.md) — never touch source code, build files, or
+  configuration outside these targets
 - Do not rewrite existing documentation — make targeted additions and edits
 - Preserve the existing structure and voice of each document
 - Each change should be the minimum needed to address the issue

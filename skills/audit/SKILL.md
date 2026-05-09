@@ -48,6 +48,8 @@ or missing.
 ### Documentation Layout
 - Do `docs/design/`, `docs/process/`, `docs/dev/` directories exist?
 - Is there a project plan in the expected location (per CLAUDE.md)?
+- Is there a `BACKLOG.md` alongside the project plan? (matches `/dev:investigate`'s
+  anchor — the project plan's directory)
 
 ### Reviewer Agents
 - Do reviewer agent files exist in `.claude/agents/review/`?
@@ -83,6 +85,10 @@ For each missing or partial item, offer to create or fix it:
 - **Just recipes**: Propose standard recipes based on the project's build tool.
 - **Reviewer agents**: Suggest which reviewers are relevant and offer to create any
   missing ones.
+- **BACKLOG.md**: If missing, offer to scaffold one alongside the project plan by
+  copying the starter template from the greenfield skill's assets
+  (`../greenfield/assets/backlog-template.md`, relative to this skill's directory).
+  Then ensure CLAUDE.md's Documentation Index references it.
 
 Present each scaffold proposal as a strong default: "I'll create X with this content
 unless you'd like changes." Proceed unless the user objects.

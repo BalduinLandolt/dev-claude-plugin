@@ -19,32 +19,6 @@ fresh "by the way" ideas that haven't been thought through.
 
 ## Open entries
 
-### Promote `BACKLOG.md` from invoicer-local to a plugin convention
-
-Today the backlog file is something invoicer happens to keep; the plugin
-itself has no notion of it. `greenfield` doesn't create one, `investigate`
-doesn't read one, `audit` doesn't check for one. Worth baking in:
-
-- Add `BACKLOG.md` (or `docs/design/BACKLOG.md`, matching the project's
-  doc layout) to `greenfield`'s standard document set, with a starter
-  template and explanation of its role vs. the project plan.
-- ~~Teach `/dev:investigate` to read the backlog at the start of Mode A
-  and surface any open entries to the user before proposing the next
-  plan item.~~ Done in `e860a6d` — investigate now runs a backlog
-  triage check before either mode, looking for `BACKLOG.md` next to
-  the project plan.
-- Have `/dev:audit` check whether the project has a backlog file in the
-  expected location and offer to scaffold one if missing.
-- Mention in `/dev:learn`'s triage rubric that ideas surfaced during a
-  task which don't fit any existing doc are candidates for the backlog
-  (currently they tend to land in standalone learnings or get dropped).
-
-Decide naming convention before promoting (BACKLOG.md at root vs.
-docs/design/BACKLOG.md) — the plugin's own use of root-level reflects
-its flat layout, while invoicer's `docs/design/` reflects its richer
-doc tree. Greenfield should pick based on whether the project has a
-`docs/design/` dir.
-
 ### Decouple `learn` from the live session context
 
 A full implementation cycle (plan → implement → review → verify → learn)
@@ -130,7 +104,14 @@ Open design questions:
 
 ## Recently promoted
 
-_(none yet)_
+### Promote `BACKLOG.md` from invoicer-local to a plugin convention
+
+Done. `/dev:investigate` already read the backlog (commit `e860a6d`); this
+round added it to `/dev:greenfield`'s standard document set with a starter
+template (always at `docs/design/BACKLOG.md` since greenfield always creates
+that directory), to `/dev:audit`'s Documentation Layout check and Phase 3
+scaffold offer, and to the doc-improver triage rubric as a fifth category
+"Backlog candidate" for tangential ideas that don't fit any existing doc.
 
 ## Recently dropped
 

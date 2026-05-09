@@ -77,6 +77,8 @@ is below, but not every project needs all of them — and some may need extras.
 10. `docs/process/GIT_WORKFLOW.md` — branching, PRs, commit conventions
 11. `docs/process/AI_AGENT_SETUP.md` — workflow harness, agent catalog, skills/commands
 12. `docs/design/PROJECT_PLAN.md` — master task checklist with dependency graph
+13. `docs/design/BACKLOG.md` — holding pen for "by the way" ideas surfaced
+    mid-task; triaged before starting the next task
 
 Present this list to the user and discuss:
 - Which documents are relevant for this project?
@@ -112,6 +114,9 @@ The order matters because later documents reference earlier ones:
 - Git Workflow (how code moves through the pipeline)
 - AI Agent Setup (how agents work on this project)
 - Project Plan (what needs to be built, in what order)
+- Backlog (holding pen for surfaced ideas — copy the template at
+  `assets/backlog-template.md` to `docs/design/BACKLOG.md`, no discussion
+  needed; starts empty)
 
 ## Phase 4: Initialize the Repo
 
@@ -135,6 +140,7 @@ Once all documents exist:
      thin-frontend rules, etc.)
    - **Documentation Index** — one-line descriptions of all doc locations, including
      `.claude/conventions/` ("Project-specific review criteria for each reviewer agent")
+     and `docs/design/BACKLOG.md` so research agents and `/dev:investigate` pick it up
    - If the project uses behavioral specs, a **Behavioral Specifications** section listing
      where they live
 5. Commit CLAUDE.md
@@ -204,6 +210,7 @@ At the end, verify:
 - [ ] The agent harness is functional (test with `/dev:review-plan` or similar)
 - [ ] `/dev:audit` reports a clean state
 - [ ] PROJECT_PLAN.md has the first items checked off (repo init, scaffold, harness)
+- [ ] `docs/design/BACKLOG.md` exists alongside the project plan with the starter template
 - [ ] The user is satisfied with the foundation
 
 ## Notes

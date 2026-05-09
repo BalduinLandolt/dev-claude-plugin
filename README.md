@@ -100,6 +100,10 @@ The plugin expects consuming projects to provide:
    project-specific criteria (architecture rules, threat model, language idioms, etc.)
 3. **Standard build recipes** — `just test`, `just lint`, `just fmt-check`, `just build`,
    `just dev` (or equivalent)
+4. **`docs/design/BACKLOG.md`** *(or alongside the project plan, wherever that lives)* — a
+   holding pen for "by the way" ideas surfaced mid-task. `/dev:investigate` reads it before
+   proposing work, `/dev:learn` writes tangential ideas to it, and `/dev:audit` checks
+   for it. Scaffolded automatically by `/dev:greenfield`.
 
 Use `/dev:greenfield` to set up a new project, or `/dev:audit` to check an existing one.
 
