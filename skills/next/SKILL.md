@@ -79,11 +79,12 @@ Each downstream skill parses `mode=<value>` from its args and adapts. If you for
 mode, the skill falls back to its safe default (`full` for `/dev:plan`), which costs
 more but preserves coverage.
 
-The review loops are wrapped by coordinator subagents (`review-plan-coordinator`,
-`review-impl-coordinator`) rather than invoked as skills directly. Pass the mode in the
-agent's prompt rather than as a `mode=<value>` arg. The coordinator then invokes the
-underlying skill with the right args internally. See Phases 3 and 4 for the spawn
-points.
+The review loops are wrapped by coordinator subagents (`dev:coordinator:review-plan-coordinator`,
+`dev:coordinator:review-impl-coordinator`) rather than invoked as skills directly. Pass
+the mode in the agent's prompt rather than as a `mode=<value>` arg. The coordinator then
+invokes the underlying skill with the right args internally. See Phases 3 and 4 for the
+spawn points. Note the `dev:coordinator:` prefix: these are plugin-provided agents and
+the loader namespaces them. Spawning by bare name (`review-plan-coordinator`) will fail.
 
 ### Recording the mode persistently
 
@@ -116,8 +117,8 @@ session breaks, restart from `/dev:next`.
 
 - Run `/dev:plan` with the chosen mode. It will produce a PRD plus an implementation
   plan document.
-- Spawn the `review-plan-coordinator` agent immediately. Do not ask permission first;
-  review is part of planning. Pass the plan directory path
+- Spawn the `dev:coordinator:review-plan-coordinator` agent immediately. Do not ask
+  permission first; review is part of planning. Pass the plan directory path
   (`docs/design/plans/<task>/`) explicitly in the agent's prompt — the coordinator
   needs it to invoke `/dev:review-plan` correctly. The coordinator runs the skill in
   its own context, loops until clean, and returns a structured summary. You only see
@@ -133,12 +134,13 @@ plan from ExitPlanMode). The implement skill runs review checkpoints internally.
 
 Mode-specific behavior is handled by `/dev:implement`:
 - **Minimal**: skip the test-reviewer checkpoint if no new tests; run a single
-  comprehensive review at the end (one round, no loop) via `review-impl-coordinator`
-  with `mode=minimal`.
+  comprehensive review at the end (one round, no loop) via
+  `dev:coordinator:review-impl-coordinator` with `mode=minimal`.
 - **Light**: skip the test-reviewer checkpoint if no new tests; run the full review
-  loop at the end via `review-impl-coordinator` with `mode=light`.
+  loop at the end via `dev:coordinator:review-impl-coordinator` with `mode=light`.
 - **Full**: run all checkpoints — test-reviewer after tests are written, full review
-  loop after implementation is complete via `review-impl-coordinator` with `mode=full`.
+  loop after implementation is complete via `dev:coordinator:review-impl-coordinator`
+  with `mode=full`.
 
 Only present the result to the user when implementation is complete and reviewers
 are clean.
