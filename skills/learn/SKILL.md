@@ -66,8 +66,14 @@ only useful to the implement coordinator during the loop. Delete the directory
 before committing. If a consuming project gitignores `worker-logs/` directories
 instead, the delete is harmless.
 
-Stage the rename, the doc improvements, and the worker-logs deletion together and
-commit them with a message like:
+If `docs/design/plans/<task>/coordinator-trace.md` exists (created by the
+implement and review skill bodies during the run for post-hoc audit), delete
+it too. It is structural scratch; the relevant findings have already been
+funnelled through the issues journal and the coordinator summaries. If a
+consuming project gitignores it, the delete is harmless.
+
+Stage the rename, the doc improvements, and the worker-logs / coordinator-trace
+deletions together and commit them with a message like:
 `docs: update [doc] based on learnings from task [number]`
 
 ## Principle

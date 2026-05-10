@@ -162,3 +162,27 @@ Reviewers that were clean in the previous round, are not `rerun: always`, and ar
 flagged by your judgment do **not** re-run. They're considered done for this loop.
 
 Repeat until no critical or warning findings remain among the reviewers that ran.
+
+## Trace log (light, full)
+
+Throughout the loop, append structural entries to
+`<plan-directory>/coordinator-trace.md` (the same trace file `/dev:implement`
+uses, when this skill runs as the implementation review checkpoint). The
+trace lets the user or orchestrator verify which reviewers ran in which round
+and what they returned. **Skip in `mode=minimal`** — no plan directory.
+
+Append a `## <ISO 8601 timestamp> — <event>` entry, 1-3 lines body, at:
+
+- **Skill start**: "review-impl skill started" with mode.
+- **Round start** (per round): "review-impl round <N> spawning <K> reviewers"
+  with the resolved set.
+- **After all reviewers return** (per round): "review-impl round <N>
+  collected" with finding counts.
+- **Fix phase** (per round, if any fixes applied): "review-impl round <N>
+  fixes" with the file list.
+- **Convergence**: "review-impl converged after <N> rounds" (or "review-impl
+  single-round complete" in minimal).
+- **Escalation** (if any): "review-impl escalated" with one-line reason.
+
+If the trace file does not exist, create it. If it exists (because this skill
+runs inside `/dev:implement`'s flow), append.

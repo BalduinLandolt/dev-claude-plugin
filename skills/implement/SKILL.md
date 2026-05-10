@@ -37,6 +37,40 @@ own the loop and the git state.
    work on `main` directly; otherwise create a branch as usual.
 3. Create the issues journal: `docs/design/plans/<task>/issues.md`. **Skip in minimal
    mode** — minimal tasks are not worth the journal overhead.
+4. Initialise the coordinator trace: `docs/design/plans/<task>/coordinator-trace.md`.
+   See **Trace log** below. **Skip in minimal mode**.
+
+## Trace log (light, full)
+
+Throughout the run, append structural entries to
+`docs/design/plans/<task>/coordinator-trace.md`. The trace is a *post-hoc audit
+record* — it lets the user (or the orchestrator) verify that you followed your
+contract: which subagents you spawned, in what order, what they returned. It is
+not user-facing narrative; it is not gitignored by default but is deleted by
+`/dev:learn` along with `worker-logs/`. Consuming projects may add
+`coordinator-trace.md` to `.gitignore` if they prefer.
+
+Append a `## <ISO 8601 timestamp> — <event>` entry, with a 1-3 line body, at
+each of these moments:
+
+- **Skill start**: "implement skill started" with mode and plan path.
+- **Before each `dev:coordinator:implement-worker` spawn**: "worker spawned
+  for step <id>" with a one-line step description.
+- **After each worker returns**: "worker returned for step <id>" with status,
+  files-changed count, tests pass/fail, and blockers (if any).
+- **Before the `test-reviewer` spawn** (if any): "test-reviewer spawned".
+- **After test-reviewer returns**: "test-reviewer returned" with critical and
+  warning counts.
+- **Before the `dev:coordinator:review-impl-coordinator` spawn**:
+  "review-impl-coordinator spawned" with mode.
+- **After it returns**: "review-impl-coordinator returned" with status, rounds
+  completed, finding counts.
+- **Skill return**: "implement skill returning" with overall status.
+
+The trace is structural, not narrative. Three lines per event is plenty.
+Workers and reviewers do not write to the trace themselves — the skill body
+records what it spawned and what each subagent returned. **Skip the entire
+trace mechanism in minimal mode** (no plan directory).
 
 ## Execution
 

@@ -59,6 +59,11 @@ reports 0, surface that prominently — a 0-reviewer run is not a clean review.
 - <bullet describing what changed in the plan, not which reviewer raised it>
 
 **Files modified**: <comma-separated list of plan files touched>
+**Coordinator trace**: <path to coordinator-trace.md>
+
+**Run trace** (broad strokes — 2-4 bullets summarising the rounds):
+- <e.g., "Round 1: 9 reviewers, 2 critical + 5 warning fixed">
+- <e.g., "Round 2: 4 reviewers, clean">
 
 **Escalations** (only if status=escalated):
 - <bullet>: <reason>

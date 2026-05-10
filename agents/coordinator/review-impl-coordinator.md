@@ -68,6 +68,12 @@ reports 0, surface that prominently — a 0-reviewer run is not a clean review.
 - <bullet describing what changed in the code, not which reviewer raised it>
 
 **Files modified during review**: <comma-separated list>
+**Coordinator trace**: <path, or "n/a in minimal mode">
+
+**Run trace** (broad strokes — 2-4 bullets; skip in minimal mode where the
+trace file does not exist):
+- <e.g., "Round 1: 9 reviewers, 2 critical + 5 warning fixed">
+- <e.g., "Round 2: 4 reviewers, clean">
 
 **Escalations** (only if status=escalated):
 - <bullet>: <reason>

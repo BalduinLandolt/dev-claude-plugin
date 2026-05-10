@@ -86,6 +86,13 @@ this template. Hard cap ~300 words.
 - review-impl: <clean | escalated | single-round-complete>
 
 **Issues journal**: <path, or "n/a in minimal mode">
+**Coordinator trace**: <path, or "n/a in minimal mode">
+
+**Run trace** (broad strokes — 3-6 bullets summarising what happened during
+the run; skip in minimal mode where the trace file does not exist):
+- <e.g., "5 worker steps, all complete on first attempt">
+- <e.g., "test-reviewer: clean">
+- <e.g., "review-impl: 2 rounds; 3 critical + 4 warning fixed in round 1, clean in round 2">
 
 **Yields / blockers** (only if status != complete):
 - <bullet>: <reason>

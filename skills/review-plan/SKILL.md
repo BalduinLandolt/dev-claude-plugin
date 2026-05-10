@@ -111,3 +111,25 @@ then is the plan considered reviewed.
 ### 6. Update Status
 
 Update the plan document frontmatter: `status: reviewed`
+
+## Trace log
+
+Throughout the loop, append structural entries to
+`<plan-directory>/coordinator-trace.md` (the same trace file `/dev:implement`
+uses, if this run is part of a larger task). The trace lets the user or
+orchestrator verify which reviewers ran in which round and what they returned.
+
+Append a `## <ISO 8601 timestamp> — <event>` entry, 1-3 lines body, at:
+
+- **Round start** (per round): "review-plan round <N> spawning <K> reviewers"
+  with the resolved set (e.g., "8 plugin + 1 local; security-reviewer
+  disabled").
+- **After all reviewers return** (per round): "review-plan round <N>
+  collected" with counts (critical, warning, suggestion totals across the set).
+- **Fix phase** (per round, if any fixes applied): "review-plan round <N>
+  fixes" with the file list.
+- **Convergence**: "review-plan converged after <N> rounds".
+- **Escalation** (if any): "review-plan escalated" with one-line reason.
+
+If the trace file does not exist, create it. If it exists (because this skill
+runs inside `/dev:implement`'s flow), append.
