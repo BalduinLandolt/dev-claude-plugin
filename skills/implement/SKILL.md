@@ -146,13 +146,23 @@ specifics of `--fixup`, `--amend`, and autosquash usage.
 
 ### Issue journal
 
-Workers append entries directly during execution. If you ever need to append
-manually (e.g., after escalating a blocker resolved by user input), follow the
-same format:
+Workers append entries directly during execution. The journal captures **both
+code issues and process friction**. Code issues are the obvious case (bugs,
+test failures, follow-up work). Process friction is harness-level pain — the
+input to `/dev:learn`'s agent/skill-bug and discoverability-gap triage.
+
+You (the coordinator) see process friction the worker can't: a worker that
+needed 2-3 spawns before a step landed, a step description you had to refine
+mid-loop, a missing convention file that left a reviewer underpowered, a
+recurring blocker pattern across multiple workers. Log those yourself — they
+do not surface in any single worker's report.
+
+Append manually using the same entry format as workers:
 
 ```markdown
 ## Issue: [short description]
-**When**: [during which step]
+**Category**: code | process
+**When**: [during which step or phase]
 **Files**: [paths involved — omit if not applicable]
 **What happened**: [description]
 **What I tried**: [approaches attempted]

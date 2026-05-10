@@ -133,7 +133,12 @@ reveals a gap in the plan that requires a product decision.
 **Do not escalate as a default.** Read the plan, read the docs, think about the intent,
 and make a judgment call. The user should only see questions that truly require their input.
 
-Log any fixes to the issues journal.
+Log fixes to the issues journal. Also log **process friction** observed
+during review: a reviewer that ran without its convention file (which would
+have made findings sharper), a reviewer set that needed a name override the
+project should formalise, a recurring finding pattern that suggests a doc
+gap. Use `**Category**: process`. If running standalone (no journal exists),
+surface these under "Side notes" in the summary instead.
 
 ### 6. Re-Review
 

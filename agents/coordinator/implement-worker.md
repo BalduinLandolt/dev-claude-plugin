@@ -63,19 +63,42 @@ file paths). Silent degradation is worse than a visible blocker.
 4. **Run the test command** the coordinator gave you. Capture pass/fail and
    any error output you'll need to report.
 5. **Log issues** to the journal (skip if "no journal"). Use the format shown
-   in the next section. Make entries self-contained: name the file, symbol,
-   error, and approach explicitly. A fresh session should be able to triage
-   your entry without conversation history.
+   in the next section. Log **both code issues and process friction**:
+   - *Code issues*: bugs surfaced, design flaws, follow-up work, test failures
+     you couldn't fully resolve.
+   - *Process friction*: vague step description, missing/empty convention file,
+     ambiguous prompt input you had to guess at, blockers you eventually
+     resolved but that suggest a harness or doc gap. These feed `/dev:learn`'s
+     agent/skill-bug and discoverability-gap triage.
+
+   Make entries self-contained: name the file, symbol, error, and approach
+   explicitly. A fresh session should be able to triage your entry without
+   conversation history.
 
 ## Journal entry format
 
 ```markdown
 ## Issue: [short description]
+**Category**: code | process
 **When**: [during which step]
 **Files**: [paths involved — omit if not applicable]
 **What happened**: [description]
 **What I tried**: [approaches attempted]
 **Resolution**: [how it was resolved, or "unresolved"]
+```
+
+Examples:
+
+```markdown
+## Issue: Step 3 spec said "validate input" but didn't list which fields
+**Category**: process
+**When**: spawned for step 3 (input-validation)
+**Files**: docs/design/plans/<task>/plan.md
+**What happened**: Plan step "validate input" was ambiguous — could mean
+schema, length, or domain checks. Picked schema-level and noted the
+assumption in the report.
+**What I tried**: Re-read PRD; not specified there either.
+**Resolution**: Implemented schema validation; flagged for plan tightening.
 ```
 
 ## Report

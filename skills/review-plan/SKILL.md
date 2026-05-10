@@ -88,6 +88,13 @@ requires a product decision that isn't covered by existing documentation.
 docs, think about the intent, and make a judgment call. The user should only see questions
 that truly require their input.
 
+If you observe **process friction** during the review — a reviewer that ran without its
+convention file, a recurring finding pattern that suggests a doc or skill gap, a reviewer
+set that needed an override the project should formalise — log it. If an issues journal
+exists for the surrounding task (`docs/design/plans/<task>/issues.md`, when this skill
+runs inside an implement flow), append an entry with `**Category**: process`. If running
+standalone (no journal), surface under "Side notes" in the summary instead.
+
 ### 5. Re-Review
 
 After fixing, spawn a **reduced reviewer set** for round 2+. The set is the union of:
