@@ -55,8 +55,19 @@ Review the doc-improver's changes. Ensure they:
 ### 5. Commit
 
 Rename `docs/design/plans/<task>/issues.md` to `docs/design/plans/<task>/issues-processed.md`
-(same directory) so re-running `/dev:learn` on this task is a no-op. Stage the rename
-alongside the doc improvements and commit them together with a message like:
+(same directory) so re-running `/dev:learn` on this task is a no-op.
+
+If `docs/design/plans/<task>/worker-logs/` exists (created by implement-workers
+when their reports needed more detail than the 200-word cap allowed), the
+directory is implementation scratch — not preserved as task documentation. The
+journal entries in `issues.md` are written self-contained (per the worker
+contract), so the doc-improver works from the journal alone; worker-logs were
+only useful to the implement coordinator during the loop. Delete the directory
+before committing. If a consuming project gitignores `worker-logs/` directories
+instead, the delete is harmless.
+
+Stage the rename, the doc improvements, and the worker-logs deletion together and
+commit them with a message like:
 `docs: update [doc] based on learnings from task [number]`
 
 ## Principle

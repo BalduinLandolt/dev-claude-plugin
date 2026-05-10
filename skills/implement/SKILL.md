@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Execute an approved plan — write tests and code, log issues, run reviewers at checkpoints. Behavior adapts to the workflow mode (minimal, light, full).
+description: Execute an approved implementation plan — dispatch per-step work to stateless implement-worker subagents, manage commits, run review checkpoints. Adapts to the workflow mode (minimal, light, full).
 argument-hint: "[path to approved plan]; mode=<minimal|light|full>"
 allowed-tools:
   - Glob
@@ -21,10 +21,17 @@ allowed-tools:
 Execute the approved implementation plan. The orchestrator passes the workflow `mode`,
 which adjusts review depth, documentation expectations, and the issues journal.
 
+This skill is normally invoked inside the `dev:coordinator:implement-coordinator` agent,
+which provides context isolation from the orchestrator. You (the agent running this
+skill body) are referred to here as the **coordinator**: you read the plan, dispatch
+per-step work to stateless `dev:coordinator:implement-worker` agents, manage commits at
+review-unit boundaries, and run review checkpoints. Workers write the actual code; you
+own the loop and the git state.
+
 ## Setup
 
 1. Read the approved plan (skip in **minimal** mode — there is no plan document; work
-   from the in-session plan that came out of Claude Code's built-in plan mode).
+   from the in-session plan that the orchestrator inlined in your prompt).
 2. Create a feature branch: `<type>/<number>-<slug>` (see docs/process/GIT_WORKFLOW.md).
    In minimal mode, if the repo allows direct-to-main (per project CLAUDE.md), you may
    work on `main` directly; otherwise create a branch as usual.
@@ -36,33 +43,78 @@ which adjusts review depth, documentation expectations, and the issues journal.
 **When touching frontend files**, follow the project's architecture conventions (see
 `.claude/conventions/architecture.md` if it exists, or `docs/process/CODING_CONVENTIONS.md`).
 
-Follow the implementation plan's sequence. For each step:
+Per-step work runs in stateless `dev:coordinator:implement-worker` subagents. You do
+not write code yourself; you spawn a worker for each plan step (or tight batch of
+related sub-steps that form one logical change), read its structured report, and
+decide what to do next. Worker contexts are discarded after each return — pass them
+everything they need in the prompt.
 
-1. **Write tests first** for core layers per the project's testing strategy (see CLAUDE.md
-   for which layers are test-first). For outer layers, tests may be written alongside or
-   shortly after implementation.
-2. **Check test coverage against spec** — if the project uses behavioral specs (check
-   CLAUDE.md), run `/allium:propagate` to identify coverage gaps. Fill any gaps before
-   proceeding.
-3. **Write the implementation** to make the tests pass
-4. **Run tests** — use the project's test command (see CLAUDE.md for the exact commands).
-5. **Commit at review-unit boundaries, not after every plan step.** Several plan
-   steps that build up one feature (deps, module skeleton, types, template, tests)
-   usually belong in a single `feat(X): introduce X` commit, not one commit per step.
-   Use `git commit --amend --no-edit` to fold the next small piece into the commit
-   in progress. When a change amends an earlier commit on the same branch (review-fix,
-   typo correction, forgotten follow-up), use `git commit --fixup=<sha>` instead of a
-   regular commit; these auto-squash at PR-prep time via
-   `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>`. Aim for ~3-5 commits
-   on a typical task PR under rebase-merge; check the project's merge strategy (project
-   CLAUDE.md or GIT_WORKFLOW doc) if unsure.
-6. **Log issues** as they occur — append to the issues journal
+### Minimal mode at a glance
 
-### Issue Journal Format
+Minimal mode is the same loop with the heavy artefacts stripped. The deltas
+(referenced inline through the rest of this skill) are:
 
-Write entries so a fresh session can triage them without conversation history —
-name the file, symbol, error, and approach explicitly rather than relying on
-session shorthand ("the thing we tried earlier", "that test").
+- No plan document on disk; the orchestrator inlined the in-session plan in your
+  prompt. Pass an excerpt to each worker as the **Step** field.
+- No issues journal (`Journal path: no journal` in worker prompts).
+- No plan-checkbox updates after a worker reports `complete`.
+- No test-reviewer checkpoint (test review folds into the final review pass).
+- Direct-to-main allowed if the project CLAUDE.md permits it.
+- `/allium:weed` skipped.
+- Developer-doc updates skipped unless the change is genuinely surface-area-changing.
+
+### Per-step worker loop
+
+For each plan step, spawn `dev:coordinator:implement-worker` with a prompt that
+populates each field listed in the worker's Input section
+(`agents/coordinator/implement-worker.md`). At minimum: step description, file
+paths, test command, conventions, journal path, mode, and the plan path in light
+or full mode.
+
+The worker writes tests, writes code, runs tests, logs issues to the journal, and
+returns a ~200-word report (status, files changed, tests, summary, blockers, issues,
+side notes). Workers do not commit, do not spawn other agents, and do not ask the
+user questions.
+
+### Reading the worker report and deciding next
+
+After each worker returns:
+
+1. **If `status=complete`**: check off the corresponding step in the plan document
+   (skip in minimal mode — no plan doc). Continue.
+2. **If `status=blocked`**: decide.
+   - The blocker is a question for the user → escalate via `AskUserQuestion`. Once
+     answered, spawn a fresh worker with the corrected prompt.
+   - The blocker is a missing piece you can resolve (re-read the plan, gather more
+     context, refine the step description) → resolve, then spawn a fresh worker.
+   - The blocker is a real plan problem → return to the spawning agent with status
+     `blocked` so the orchestrator can intervene.
+3. **If `status=partial`**: treat the step as not yet done. Decide whether to spawn
+   another worker to finish it or yield.
+
+### Test coverage check (light, full)
+
+If the project uses behavioral specs (check CLAUDE.md), run `/allium:propagate`
+periodically (after a worker reports tests added) to identify coverage gaps. Fill any
+gaps via another worker invocation. Do not run `/allium:propagate` after every step —
+once per cluster of test-adding steps is enough. The final `/allium:weed` runs before
+the review-impl checkpoint, separately.
+
+### Commit cadence
+
+**Commit at review-unit boundaries, not per plan step.** Several plan steps that
+build up one feature (deps, module skeleton, types, template, tests) usually
+belong in a single `feat(X): introduce X` commit. Aim for ~3-5 commits on a
+typical task PR under rebase-merge; under squash-merge, granularity matters
+less. Follow the project's git-hygiene conventions (project CLAUDE.md, the
+`docs/process/GIT_WORKFLOW.md` doc, or the user's global preferences) for the
+specifics of `--fixup`, `--amend`, and autosquash usage.
+
+### Issue journal
+
+Workers append entries directly during execution. If you ever need to append
+manually (e.g., after escalating a blocker resolved by user input), follow the
+same format:
 
 ```markdown
 ## Issue: [short description]
@@ -73,49 +125,52 @@ session shorthand ("the thing we tried earlier", "that test").
 **Resolution**: [how it was resolved, or "unresolved"]
 ```
 
+Workers also write longer detail (test failure traces, large diff summaries) to
+`docs/design/plans/<task>/worker-logs/step-<id>.md` when their report's main body
+would otherwise blow past the 200-word cap. Read those files if you need the
+detail to make a decision; otherwise leave them for `/dev:learn`, which deletes
+the directory at commit time.
+
 ## Review Checkpoints
 
-Behavior depends on mode.
+Review checkpoints run after the per-step worker loop completes, not interleaved
+with it. Behavior depends on mode.
 
 ### Minimal mode
 
-- **No test-reviewer checkpoint.** Minimal tasks usually don't introduce new tests; if
-  they do, the test review is folded into the final review.
-- **One final review pass** when implementation is complete: spawn the
+- **No test-reviewer checkpoint.** Minimal tasks usually don't introduce new tests;
+  if they do, the test review is folded into the final review.
+- **One final review pass** when the worker loop has finished: spawn the
   `dev:coordinator:review-impl-coordinator` agent with `mode=minimal` in its prompt.
   The coordinator invokes `/dev:review-impl` in its own context, runs round 1 only
   (because of the mode), and returns a structured summary. You only see the summary,
   not the per-reviewer findings.
 - Skip the `/allium:weed` step.
 
-### Light mode
+### Light and full modes
 
-- **Test-reviewer checkpoint** if the task wrote new tests. Spawn the `test-reviewer`
-  agent (a project-local reviewer from `.claude/agents/review/`, addressed by bare
-  name — do **not** spawn the coordinator here). Pass it the plan and the list of
-  test files. Fix any Critical or Warning findings. Do not loop. If the task wrote no
-  new tests, skip this checkpoint.
-- **Final review** when implementation is complete: spawn the
-  `dev:coordinator:review-impl-coordinator` agent with `mode=light` in its prompt.
-  The coordinator invokes `/dev:review-impl` with its full loop semantics in its own
-  context and returns a structured summary.
-- Run `/allium:weed` before the final review if the project uses behavioral specs and
-  the change touches a spec'd area.
+The two modes share the same checkpoint structure; only the `mode=` arg passed
+to the review-impl coordinator differs.
 
-### Full mode
+- **Test-reviewer checkpoint** if the loop produced new tests. Spawn the
+  `test-reviewer` agent (project-local, from `.claude/agents/review/`, addressed
+  by bare name — no coordinator wrapper, since this is a single-round
+  single-reviewer call and the isolation overhead isn't earned). Pass it the
+  plan and the list of test files. Fix Critical or Warning findings via a
+  worker spawn or a direct edit for tiny ones. Do not loop. Skip if no new
+  tests.
+- **Final review** when the test-reviewer checkpoint (if any) is clean: spawn
+  `dev:coordinator:review-impl-coordinator` with `mode=light` or `mode=full` in
+  its prompt. It runs the full review-impl loop in its own context and returns
+  a structured summary.
+- Run `/allium:weed` before the final review if the project uses behavioral
+  specs and the change touches a spec'd area.
 
-- **Test-reviewer checkpoint** after tests are written, before implementation. Spawn
-  the `test-reviewer` agent. Fix any Critical or Warning findings. Do not loop.
-- **Final review** when implementation is complete: spawn the
-  `dev:coordinator:review-impl-coordinator` agent with `mode=full` in its prompt. The
-  coordinator invokes `/dev:review-impl` with its full loop semantics in its own
-  context and returns a structured summary.
-- Run `/allium:weed` before the final review if applicable (same as light).
-
-In all modes, reviews run automatically — do not ask permission first; review is part of
-implementation. Only present the result to the user when implementation is complete and
-the relevant reviews have converged. The coordinator's structured summary is what you
-present (alongside the actual implementation diff).
+In all modes, reviews run automatically — do not ask permission first; review is
+part of implementation. Only return to the spawning agent when the worker loop is
+done and the relevant reviews have converged. The orchestrator (one level up,
+outside this skill) presents the implement-coordinator's structured summary
+alongside the diff to the user.
 
 ## Developer Documentation
 
@@ -144,5 +199,6 @@ the user could see, a tweaked label). Otherwise skip.
 ## Completion
 
 When all plan steps are done, reviewers are clean, and documentation is updated:
-- Run the project's test, lint, and format-check commands one final time (see CLAUDE.md)
-- Notify the user that implementation is ready for human verification
+- Run the project's test, lint, and format-check commands one final time (see CLAUDE.md).
+- Return. The implement-coordinator (one level out) produces its summary and the
+  orchestrator presents it alongside the diff for human verification.

@@ -66,25 +66,18 @@ Make a recommendation based on what investigate found. Phrase it as
 
 Set the chosen mode as a variable for the rest of the workflow.
 
-### How the mode propagates to downstream skills and coordinators
+### How the mode propagates
 
-When you invoke `/dev:plan` or `/dev:implement` via the Skill tool, include the mode in
-the args string using the convention `mode=<value>`. Examples:
-
-- `/dev:plan` with args: `"<task description>; mode=light"`
-- `/dev:implement` with args: `"<path to plan>; mode=full"` (or, in minimal mode where
-  there is no plan path, `"mode=minimal"`)
-
-Each downstream skill parses `mode=<value>` from its args and adapts. If you forget the
-mode, the skill falls back to its safe default (`full` for `/dev:plan`), which costs
-more but preserves coverage.
-
-The review loops are wrapped by coordinator subagents (`dev:coordinator:review-plan-coordinator`,
-`dev:coordinator:review-impl-coordinator`) rather than invoked as skills directly. Pass
-the mode in the agent's prompt rather than as a `mode=<value>` arg. The coordinator then
-invokes the underlying skill with the right args internally. See Phases 3 and 4 for the
-spawn points. Note the `dev:coordinator:` prefix: these are plugin-provided agents and
-the loader namespaces them. Spawning by bare name (`review-plan-coordinator`) will fail.
+- For skills (`/dev:plan`): pass mode as `mode=<value>` in the args string, e.g.
+  `"<task description>; mode=light"`. The plan skill defaults to `full` if the
+  arg is missing.
+- For coordinator agents (`dev:coordinator:implement-coordinator`,
+  `dev:coordinator:review-plan-coordinator`, `dev:coordinator:review-impl-coordinator`):
+  pass mode in the agent's prompt; the coordinator forwards it to the underlying
+  skill internally.
+- **Use the full namespaced name when spawning plugin coordinators.** Bare names
+  (`implement-coordinator`, `review-plan-coordinator`) fail because the loader
+  namespaces plugin-provided agents under `dev:<category>:`.
 
 ### Recording the mode persistently
 
@@ -129,25 +122,51 @@ session breaks, restart from `/dev:next`.
 
 ## Phase 4: Implement + Review
 
-Run `/dev:implement` with the approved plan (or, in minimal mode, with the in-session
-plan from ExitPlanMode). The implement skill runs review checkpoints internally.
+Spawn the `dev:coordinator:implement-coordinator` agent. Do not invoke `/dev:implement`
+directly — the coordinator runs the implement loop in its own context, dispatches
+per-step work to stateless workers (`dev:coordinator:implement-worker`), runs the
+review checkpoints, and returns a structured summary. The orchestrator (you) only sees
+that summary, not the per-step worker reports, journal entries, test output, or
+reviewer findings.
 
-Mode-specific behavior is handled by `/dev:implement`:
-- **Minimal**: skip the test-reviewer checkpoint if no new tests; run a single
-  comprehensive review at the end (one round, no loop) via
-  `dev:coordinator:review-impl-coordinator` with `mode=minimal`.
+Pass in the agent's prompt:
+
+- The mode (`minimal`, `light`, or `full`).
+- **Light, full**: the plan directory path (`docs/design/plans/<task>/`) plus the
+  plan filename, and the task slug for the journal path.
+- **Minimal**: the in-session plan from `ExitPlanMode` inlined as text. There is no
+  plan document on disk in minimal mode.
+- A short reminder of the task intent.
+
+Mode-specific behavior is handled inside the coordinator (via the implement skill):
+
+- **Minimal**: no test-reviewer checkpoint at all; run a single comprehensive review
+  at the end (one round, no loop) via `dev:coordinator:review-impl-coordinator` with
+  `mode=minimal`.
 - **Light**: skip the test-reviewer checkpoint if no new tests; run the full review
   loop at the end via `dev:coordinator:review-impl-coordinator` with `mode=light`.
-- **Full**: run all checkpoints — test-reviewer after tests are written, full review
-  loop after implementation is complete via `dev:coordinator:review-impl-coordinator`
-  with `mode=full`.
+- **Full**: test-reviewer after the worker loop completes (when tests were written),
+  then full review loop via `dev:coordinator:review-impl-coordinator` with
+  `mode=full`.
+
+Read the summary. If status is `complete`, proceed to Phase 5.
+
+If status is `yielded` or `blocked`, follow the named next action. The one
+non-obvious recipe: `next-action=run-final-review` (fallback for a rejected
+deep spawn at the final review checkpoint) — spawn
+`dev:coordinator:review-impl-coordinator` yourself with the same mode and plan
+path; on clean, proceed to Phase 5; on unclean, surface findings to the user
+and pause. For other yields (user questions, real blockers), follow the
+standard escalation pattern: relay, gather the user's answer, then either
+re-spawn the implement-coordinator to resume from on-disk state or pause if
+the issue can't be resolved without further input.
 
 Only present the result to the user when implementation is complete and reviewers
 are clean.
 
 ## Phase 5: Update Documentation
 
-Handled by `/dev:implement`:
+Handled inside the implement-coordinator (via the implement skill body):
 - Update developer documentation as specified in CLAUDE.md.
 - If user-facing changes, update user guide as specified in CLAUDE.md.
 - Skip in minimal mode unless the change is genuinely user-visible.

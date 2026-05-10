@@ -62,15 +62,22 @@ run. Each reviewer reads project-specific criteria from `.claude/conventions/` f
 ### Learning
 - **doc-improver** — triage implementation issues into documentation fixes
 
-### Coordinator (context-isolation wrappers for review loops)
+### Coordinator (context-isolation wrappers)
 - **review-plan-coordinator** — runs `/dev:review-plan` in an isolated subagent
   context, returns a compact structured summary
 - **review-impl-coordinator** — runs `/dev:review-impl` in an isolated subagent
   context, returns a compact structured summary
+- **implement-coordinator** — runs `/dev:implement` in an isolated subagent
+  context, returns a compact structured summary; inside its loop the implement
+  skill spawns one stateless **implement-worker** per plan step
+- **implement-worker** — stateless per-step executor: writes tests + code, runs
+  tests, returns a ~200-word report, context discarded after each step
 
-These are spawned by `/dev:next` and `/dev:implement` instead of invoking the review
-skills directly, so the orchestrator's context only sees the summary, not the
-per-reviewer findings or fix history.
+`/dev:next` spawns the review-plan-coordinator and the implement-coordinator
+directly. The implement-coordinator (via the implement skill body) spawns the
+implement-worker agents and the review-impl-coordinator at its review checkpoints.
+The orchestrator's context only sees the coordinator summaries, not the per-step
+worker reports, per-reviewer findings, or fix histories.
 
 ## Installation
 

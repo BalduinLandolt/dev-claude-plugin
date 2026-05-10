@@ -19,49 +19,37 @@ fresh "by the way" ideas that haven't been thought through.
 
 ## Open entries
 
-### Push more of the loop into subagents to keep the orchestrator context empty
+### test-reviewer agent location ambiguity
 
-Today the outer agent (the one driving `/dev:next`) reads plans, applies
-review fixes, writes implementation code, and so on, all in its own context
-window. By the end of a `full`-mode cycle the context is heavy with plan
-drafts, review reports, code diffs, and issue-journal noise, even though
-most of that detail isn't needed at the orchestrator level. Long cycles
-currently push the orchestrator into compaction territory.
+`agents/test-reviewer.md` lives at the root of `agents/` (no subdirectory),
+which loads it as `dev:test-reviewer` under the namespacing rules. The
+implement skill expects to spawn it as bare-name `test-reviewer` (project-local
+override pattern). Two related issues:
 
-The fix is a more delegated topology: the orchestrator coordinates, and the
-heavy lifting happens in subagents whose contexts are discarded after each
-stage. Skill bodies load into the calling agent's context when invoked via
-the `Skill` tool, so the way to get isolation is to spawn an `Agent` that
-then invokes the skill in *its* context. No skill rewrite needed.
+1. The plugin's copy at `agents/test-reviewer.md` is reachable only as
+   `dev:test-reviewer`, not as bare `test-reviewer`. Whether the bare-name
+   spawn falls through to the namespaced version when no project-local copy
+   exists is unverified.
+2. Moving the file to `agents/review/test-reviewer.md` for shape-consistency
+   with the other reviewer templates would expose it to the dynamic-discovery
+   review-impl loop, which would spawn it during the regular final review —
+   wrong behavior for an agent designed to run as a standalone single-round
+   checkpoint.
 
-Layered proposal. The MVP layer (review loops as coordinator subagents)
-shipped; see "Recently promoted" below. What remains:
+A clean fix probably involves either documenting the bare-name expectation
+explicitly (consuming projects must provide their own at
+`.claude/agents/test-reviewer.md`, root, not in `review/`), or refactoring the
+implement skill to spawn `dev:test-reviewer` directly when no project-local
+override exists. Surfaced during round-2 review of the implement-coordinator
+change; deferred because the existing implement skill already calls it as
+bare-name and the wider behavior was working before this change.
 
-#### Stretch: implementation as coordinator + stateless workers
+### Plan drafting in subagents (subagent-topology entry, remaining tier)
 
-Don't build a monolithic implementation subagent. It would suffer the
-same context bloat the orchestrator has, just one layer down. Instead:
-
-- **Coordinator subagent** (Opus) holds the loop. It reads the plan, finds
-  the next unchecked step, spawns a worker for that step, reads the
-  worker's structured report, appends to the issues journal, and decides
-  whether to continue or yield to the orchestrator.
-- **Worker subagent** (Sonnet) is given only the current step plus the
-  relevant file paths. It writes code, runs tests, returns a structured
-  report. It doesn't spawn other agents, doesn't run reviewers, doesn't
-  decide what's next. Its context is discarded after each step.
-- **State lives on disk**, not in the coordinator's context: plan
-  checkboxes, issues journal, optional worklog. The repo already has all
-  the disk artefacts this needs.
-- **Yields to the orchestrator** at natural checkpoints: review-unit
-  boundaries (matches `893fb47`), blocking user questions, plan exhausted.
-  The orchestrator gives the user a chance to course-correct, then resumes
-  the coordinator.
-
-Termination criteria map onto current `/dev:implement` completion: plan
-steps all checked off, tests pass, reviewers clean. No new logic.
-
-#### Needs investigation: plan drafting in subagents
+The MVP (review loops as coordinator subagents) and the stretch
+(implementation as coordinator + stateless workers) both shipped; see
+"Recently promoted" below. What is left of the original "push more of the
+loop into subagents" entry is just plan drafting.
 
 Plan drafting is genuinely conversational (`/dev:plan` Phase 3 iterates
 with the user across multiple question rounds). A subagent can't run a
@@ -72,29 +60,39 @@ there's a topology that preserves the conversational quality without
 keeping all of plan drafting in the orchestrator. Parked until someone
 sketches one that doesn't have those failure modes.
 
-#### Open design questions
+#### Open design questions still in flight
 
-- **Worker→coordinator handoff schema.** Without a hard structure, worker
-  reports become unbounded prose and coordinator context bloats. Schema
-  needs a length cap with a "details on disk at <path>" escape hatch.
-  The coordinator→orchestrator schema is the same shape, summarised
-  further. Designing the worker schema gives the orchestrator schema for
-  free.
 - **Coordinator's own context budget.** Across many worker iterations,
-  even a thin coordinator can fill up. Worth measuring once the MVP
-  exists.
+  even a thin coordinator can fill up. Worth measuring now that the
+  implement-coordinator exists in practice.
 - **User course corrections during a long subagent run.** The orchestrator
   can't see the subagent in real time. The yield-at-checkpoint design
   partly answers this: if the user has a redirect, they raise it at the
   next yield. Long stretches without yields are the failure case.
-- **Sub-subagent spawning depth.** The implementation coordinator spawns
-  workers; review coordinators spawn reviewers (already do). Confirm
-  there's no practical ceiling on Agent-spawning-Agent depth in Claude
-  Code.
+
+(Resolved: worker→coordinator handoff schema, codified in
+`agents/coordinator/implement-worker.md` and `implement-coordinator.md`;
+sub-subagent spawning depth, addressed via the depth-3 fallback documented
+in `implement-coordinator.md`.)
 
 ## Recently promoted
 
-### Review loops as coordinator subagents (MVP layer of the subagent-topology entry)
+### Implementation as coordinator + stateless workers (stretch tier of the subagent-topology entry)
+
+Done. Added `agents/coordinator/implement-coordinator.md` (wraps the
+`/dev:implement` loop in an isolated context, returns a ~300-word
+structured summary) and `agents/coordinator/implement-worker.md`
+(stateless per-step executor: writes tests + code + runs tests, returns a
+~200-word report, context discarded). Reworked `skills/implement/SKILL.md`
+to dispatch per-step work to workers and own commits + review checkpoints
+at the coordinator level. Updated `/dev:next` Phase 4 to spawn the
+implement-coordinator instead of invoking `/dev:implement` directly.
+Total spawn depth from the orchestrator is 3 at the final review
+checkpoint (orchestrator → implement-coordinator → review-impl-coordinator
+→ reviewer); the coordinator file documents a yield-back fallback if
+Claude Code ever rejects that depth.
+
+### Review loops as coordinator subagents (MVP tier of the subagent-topology entry)
 
 Done. Added `agents/coordinator/review-plan-coordinator.md` and
 `agents/coordinator/review-impl-coordinator.md`, each invoking the
@@ -103,9 +101,7 @@ structured summary. Updated `/dev:next` Phase 3 (full mode) and
 `/dev:implement` (all three modes) to spawn the coordinator instead
 of invoking `/dev:review-plan` or `/dev:review-impl` directly. The
 orchestrator's context only sees the summary, not the per-reviewer
-findings or fix history. Stretch (implementation as coordinator +
-stateless workers) and the "needs investigation" tier remain in the
-open entry above.
+findings or fix history.
 
 ### Decouple `learn` from the live session context
 
