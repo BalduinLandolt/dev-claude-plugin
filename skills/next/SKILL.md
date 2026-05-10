@@ -120,6 +120,45 @@ similar). If working direct-to-main is allowed and chosen, the mode lives only i
 session memory — acceptable for trivial fixes that complete in one session, but if the
 session breaks, restart from `/dev:next`.
 
+## Coordinator hand-off protocol
+
+Phase 3 and Phase 4 read compact summaries from coordinator subagents. The
+orchestrator spawns `review-plan-coordinator` directly (Phase 3 full mode,
+plus the optional Phase 3 light-mode reviewer pass) and `implement-coordinator`
+directly (Phase 4). It also spawns `review-impl-coordinator` directly in one
+narrow case: the `next-action=run-final-review` fallback in Phase 4. The
+nested `review-impl-coordinator` that runs inside `implement-coordinator`'s
+context is not the orchestrator's spawn — never spawn it during the normal
+Phase 4 flow.
+
+In light and full modes, every coordinator summary contains two visibility
+hooks the orchestrator must surface to the user (minimal mode is the
+exception — see the carve-out below). Do not compress them away when
+relaying the result:
+
+- **Run trace** (a section of broad-strokes bullets in the summary) — the
+  user-facing record of what happened inside the coordinator's context:
+  rounds run, reviewers invoked, worker steps completed, escalations
+  resolved. Relay the bullets at each hand-off so the user sees *what
+  happened*, not just *what was delivered*.
+- **Coordinator trace** path (a `**Coordinator trace**: <path>` line in the
+  summary) — points to `docs/design/plans/<task>/coordinator-trace.md`, a
+  longer structural log appended throughout the run. Mention the path so the
+  user can audit deeper if they want. The file is implementation scratch and
+  is cleaned up in Phase 7 (Learn) along with `worker-logs/`; the user does
+  not need to delete it manually.
+
+Skipping either hook defeats the purpose — these hooks are the user's only
+window into what happened inside the coordinator's context, since the
+orchestrator never sees the per-reviewer findings or per-step worker reports
+directly.
+
+Minimal-mode behaviour: there is no plan directory, so the trace file is not
+written. The `implement-coordinator` summary still arrives, but its
+`Coordinator trace` field reads `n/a in minimal mode` and the Run trace
+bullets are omitted by the coordinator. Surface the rest of the summary
+normally; just don't try to surface either hook (there's nothing there).
+
 ## Phase 3: Plan + Approve
 
 ### Minimal mode
@@ -139,10 +178,12 @@ session breaks, restart from `/dev:next`.
   - **Run plan reviewers first, then implement** — for when the user is content with
     the summary but wants a reviewer pass for safety. Spawn
     `dev:coordinator:review-plan-coordinator` (same call as full mode), let it loop
-    to clean, surface its summary, then proceed to Phase 4 without a second approval
-    gate. The coordinator handles its own escalations to the user inside its
-    context, so by the time you read the summary any open product questions have
-    already been answered — there is nothing left to re-prompt for.
+    to clean, then surface its summary per the Coordinator hand-off protocol
+    (Run trace bullets + Coordinator trace path), and proceed to Phase 4 without
+    a second approval gate. The coordinator handles its own escalations to the
+    user inside its context, so by the time you read the summary any open
+    product questions have already been answered — there is nothing left to
+    re-prompt for.
   - **Request changes** — relay feedback to `/dev:plan` or revise inline, then
     re-present.
 - Once the user has chosen approve (with or without the reviewer pass), update plan
@@ -158,17 +199,22 @@ session breaks, restart from `/dev:next`.
   needs it to invoke `/dev:review-plan` correctly. The coordinator runs the skill in
   its own context, loops until clean, and returns a structured summary. You only see
   the summary, not the per-reviewer findings or fix history.
+- Surface the coordinator's summary per the Coordinator hand-off protocol —
+  the Run trace bullets and the Coordinator trace path get relayed in both
+  branches below; the branches differ only in whether you also wait for
+  approval afterwards.
 - Branch on `plan_approval` (set in Phase 2):
-  - **`manual`** (default) — present the polished, reviewed plan to the user along
-    with the coordinator's summary. Wait for explicit approval.
-  - **`auto`** — print a brief recap, then proceed directly to Phase 4 without an
-    `AskUserQuestion`. Recap shape: one line for the plan path, one line for the
-    coordinator's verdict (e.g. "reviewers converged clean after N rounds"), and
-    one line acknowledging auto-proceed. Don't expand into a re-summary of the
-    plan or the findings — the user opted out of reviewing them. The coordinator
-    already handles its own escalations inside its context, so reaching this
-    point means reviewers converged without an unresolved product question. The
-    recap is informational only; do not pause for it.
+  - **`manual`** (default) — present the polished, reviewed plan to the user
+    along with the coordinator's summary (including the Run trace bullets and
+    the Coordinator trace path). Wait for explicit approval.
+  - **`auto`** — present the same summary (Run trace bullets + Coordinator
+    trace path + plan path), append one line acknowledging auto-proceed, then
+    continue directly to Phase 4 without an `AskUserQuestion`. Don't expand
+    into a re-summary of the plan or the per-reviewer findings — the user
+    opted out of reviewing them. The coordinator already handles its own
+    escalations inside its context, so reaching this point means reviewers
+    converged without an unresolved product question. The summary is
+    informational only; do not pause for it.
 - Once approved (or auto-proceeded), update plan frontmatter: `status: approved`.
 
 ## Phase 4: Implement + Review
@@ -179,6 +225,10 @@ per-step work to stateless workers (`dev:coordinator:implement-worker`), runs th
 review checkpoints, and returns a structured summary. The orchestrator (you) only sees
 that summary, not the per-step worker reports, journal entries, test output, or
 reviewer findings.
+
+When the summary returns, follow the Coordinator hand-off protocol — the Run
+trace bullets and the Coordinator trace path get relayed to the user when
+you present the result. Do not compress them away.
 
 Pass in the agent's prompt:
 
@@ -206,14 +256,19 @@ If status is `yielded` or `blocked`, follow the named next action. The one
 non-obvious recipe: `next-action=run-final-review` (fallback for a rejected
 deep spawn at the final review checkpoint) — spawn
 `dev:coordinator:review-impl-coordinator` yourself with the same mode and plan
-path; on clean, proceed to Phase 5; on unclean, surface findings to the user
-and pause. For other yields (user questions, real blockers), follow the
-standard escalation pattern: relay, gather the user's answer, then either
-re-spawn the implement-coordinator to resume from on-disk state or pause if
-the issue can't be resolved without further input.
+path. This is the one normal-flow path where the orchestrator spawns
+`review-impl-coordinator` directly; the Coordinator hand-off protocol applies
+to its summary too (Run trace bullets + Coordinator trace path). On clean,
+proceed to Phase 5; on unclean, surface findings to the user and pause. For
+other yields (user questions, real blockers), follow the standard escalation
+pattern: relay, gather the user's answer, then either re-spawn the
+implement-coordinator to resume from on-disk state or pause if the issue
+can't be resolved without further input.
 
-Only present the result to the user when implementation is complete and reviewers
-are clean.
+When you present the result to the user (implementation complete, reviewers
+clean), include the implement-coordinator's Run trace bullets and the
+Coordinator trace path per the hand-off protocol — that is the user's only
+window into what happened inside the coordinator's context.
 
 ## Phase 5: Update Documentation
 
@@ -232,8 +287,12 @@ Ask the user to:
 
 ## Phase 7: Learn
 
-- **Minimal**: skip. Issues journals are usually empty for trivial tasks.
-- **Light, Full**: run `/dev:learn` to process any issues logged during implementation.
+- **Minimal**: skip. Issues journals are usually empty for trivial tasks, and
+  there is no plan directory holding scratch files to clean up.
+- **Light, Full**: run `/dev:learn` to process any issues logged during
+  implementation. `/dev:learn` also deletes `coordinator-trace.md` and
+  `worker-logs/` (per the hand-off protocol — both are intentionally
+  ephemeral).
 
 ## Phase 8: Complete
 
