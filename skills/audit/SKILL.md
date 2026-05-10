@@ -52,10 +52,16 @@ or missing.
   anchor — the project plan's directory)
 
 ### Reviewer Agents
-- Do reviewer agent files exist in `.claude/agents/review/`?
-- Are the "always applicable" reviewers present (correctness, simplicity, security,
-  consistency, architecture, docs, spec-compliance)?
-- Are stack-specific reviewers present for the project's tech stack?
+- The plugin ships a default reviewer set (`dev:review:*`) that runs automatically:
+  architecture, consistency, correctness, docs, frontend, rust, security, simplicity,
+  spec-compliance. A project does **not** need to copy these in to get review.
+- Does `.claude/agents/review/` exist? If so, list which project-local reviewers are
+  present. These either replace plugin reviewers of the same name (override) or run
+  in addition to them.
+- Does `CLAUDE.md` have a `## Disabled reviewers` section? If so, list which plugin
+  reviewers it disables.
+- Are stack-specific local reviewers present where the plugin defaults don't cover the
+  stack (e.g., a Python project might want a `python-reviewer.md`)?
 
 ## Phase 2: Report
 
@@ -83,8 +89,11 @@ For each missing or partial item, offer to create or fix it:
 - **CLAUDE.md sections**: Add the missing sections based on what you can observe in the
   project (existing build files, directory structure, etc.).
 - **Just recipes**: Propose standard recipes based on the project's build tool.
-- **Reviewer agents**: Suggest which reviewers are relevant and offer to create any
-  missing ones.
+- **Reviewer agents**: The plugin defaults cover the common cases. Only suggest
+  creating local reviewers when (a) the project's stack isn't covered by the plugin
+  set, or (b) the user wants to override a plugin reviewer's behaviour for this
+  project. Don't propose copies of plugin reviewers just for the sake of having them
+  locally.
 - **BACKLOG.md**: If missing, offer to scaffold one alongside the project plan by
   copying the starter template from the greenfield skill's assets
   (`../greenfield/assets/backlog-template.md`, relative to this skill's directory).

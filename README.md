@@ -56,8 +56,12 @@ Always applicable:
 Stack-specific:
 - **rust-reviewer**, **frontend-reviewer**
 
-Reviewers are discovered dynamically — add or remove reviewer files to control which ones
-run. Each reviewer reads project-specific criteria from `.claude/conventions/` files.
+The plugin's reviewers run by default in any consuming project (no copy needed). A
+project can add its own reviewers under `.claude/agents/review/` — same-name files
+override the plugin reviewer; differently-named files are additive. To drop a plugin
+reviewer entirely without replacing it, list its name under a `## Disabled reviewers`
+section in the project's `CLAUDE.md`. Each reviewer reads project-specific criteria
+from `.claude/conventions/` files.
 
 ### Learning
 - **doc-improver** — triage implementation issues into documentation fixes

@@ -48,6 +48,8 @@ After the loop converges, write a single structured report following this templa
 # Plan Review Summary
 
 **Status**: clean | escalated
+**Reviewers invoked**: <N> (e.g., "9: 8 plugin + 1 local; 0 disabled"). If the skill
+reports 0, surface that prominently — a 0-reviewer run is not a clean review.
 **Rounds completed**: <N>
 **Findings addressed**:
 - Round 1: <X> Critical, <Y> Warning resolved (<Z> suggestions noted)

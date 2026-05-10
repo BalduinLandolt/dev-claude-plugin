@@ -65,10 +65,50 @@ reviewer reconstructing the same understanding from scratch.
 
 ### 3. Discover and Spawn Reviewers
 
-Glob for all `.md` files in `.claude/agents/review/`. Each file defines a reviewer agent.
-Launch **all discovered reviewers in parallel**, each reviewing the changed files.
+The reviewer set is the union of the plugin's built-in reviewers and any project-local
+reviewers, with overrides.
 
-If no reviewer files are found, warn the user and skip the review loop.
+**Plugin reviewers** (default set, spawn by namespaced name):
+
+- `dev:review:architecture-reviewer`
+- `dev:review:consistency-reviewer`
+- `dev:review:correctness-reviewer` *(rerun: always)*
+- `dev:review:docs-reviewer`
+- `dev:review:frontend-reviewer`
+- `dev:review:rust-reviewer`
+- `dev:review:security-reviewer` *(rerun: always)*
+- `dev:review:simplicity-reviewer`
+- `dev:review:spec-compliance-reviewer` *(rerun: always)*
+
+**Project-local reviewers**: glob `.claude/agents/review/*.md`. Each file defines a
+reviewer agent spawned by its bare name (e.g., `architecture-reviewer`). Read each
+local file's frontmatter to pick up `rerun: always`.
+
+**Resolution rules** (apply in order):
+
+1. **Same-name override**: if a project-local reviewer's name matches a plugin
+   reviewer's bare name (e.g., the project ships `architecture-reviewer.md`), the
+   local version replaces the plugin one. Only the local version runs.
+2. **Additive otherwise**: project-local reviewers whose names don't match any plugin
+   reviewer run *in addition to* the plugin set.
+3. **CLAUDE.md disables**: if the consuming project's `CLAUDE.md` has a section
+   `## Disabled reviewers` listing reviewer names (one per line, bullets or plain),
+   drop those from the final set entirely. This lets a project skip a plugin reviewer
+   without replacing it (e.g., projects with an external security gate may disable
+   `security-reviewer`).
+
+Launch the resolved reviewer set **in parallel**, each reviewing the changed files.
+
+State the resolved set in a one-line note before spawning, e.g. "Spawning 9 reviewers:
+8 plugin + 1 local (`domain-reviewer`); 0 disabled." This makes the count visible above
+any wrapping coordinator.
+
+Reviewers self-gate when irrelevant to the change (e.g., `rust-reviewer` returns early
+if no `*.rs` files changed), so running the full plugin set on every review is cheap.
+
+If the resolved set is empty (no plugin reviewers reachable AND no local reviewers —
+should not happen in a normal install), warn the user with the cause and skip the
+loop.
 
 Each agent receives:
 - The change summary from step 2
@@ -104,10 +144,11 @@ For other modes:
 
 After fixing, spawn a **reduced reviewer set** for round 2+. The set is the union of:
 
-- **Always-rerun reviewers**: any reviewer whose frontmatter has `rerun: always`. Read
-  the frontmatter of each discovered reviewer file to determine this. Typically these
-  are the high-blast-radius reviewers (correctness, security, spec-compliance) where a
-  fix can introduce a regression in a non-obvious way.
+- **Always-rerun reviewers**: any reviewer marked `rerun: always`. For plugin
+  reviewers, the always-rerun set is `correctness-reviewer`, `security-reviewer`,
+  `spec-compliance-reviewer` (spawned by their namespaced names) — the high-blast-radius
+  ones where a fix can introduce a regression in a non-obvious way. For project-local
+  reviewers, read each file's frontmatter to determine this.
 - **Reviewers that flagged**: any reviewer that produced a Critical or Warning finding
   in the previous round.
 - **Orchestrator-judged reviewers**: any reviewer that you, as the orchestrator, judge

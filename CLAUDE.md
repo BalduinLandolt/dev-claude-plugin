@@ -41,7 +41,7 @@ agents/
 
 **Agent spawning**: Skills spawn agents via the `Agent` tool. Research agents are read-only (Glob/Grep/Read only). Reviewer agents are also read-only. The doc-improver agent can write. All sub-agents use the `sonnet` model (set in frontmatter).
 
-**Dynamic reviewer discovery**: Review skills glob for `*.md` in `.claude/agents/review/` of the *consuming project* (not this plugin). This means the reviewer set is controlled by whoever installs the plugin — add or remove reviewer files to change which reviewers run. The plugin ships its own reviewer definitions in `agents/review/` as templates.
+**Reviewer discovery**: The reviewer set is the union of the plugin's built-in reviewers (loaded as `dev:review:*` from this repo's `agents/review/`) and any project-local reviewers in the consuming project's `.claude/agents/review/`. Resolution: a local reviewer with the same bare name as a plugin reviewer **overrides** the plugin one; otherwise local reviewers are **additive**. A consuming project can drop a plugin reviewer entirely by listing it under a `## Disabled reviewers` section in its `CLAUDE.md`. The result: zero-config projects get the full plugin set automatically; projects that want to customise can override per-reviewer or disable per-reviewer without affecting the rest.
 
 **Convention-driven reviews**: Each reviewer agent reads a corresponding convention file from the consuming project's `.claude/conventions/` directory (e.g., `correctness-reviewer` reads `.claude/conventions/correctness.md`). If no convention file exists, the reviewer falls back to generic checks.
 
