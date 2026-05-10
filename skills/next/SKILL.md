@@ -64,9 +64,39 @@ Once the task is approved, estimate the size and propose a workflow mode. Use
 Make a recommendation based on what investigate found. Phrase it as
 "this looks like a <tier> task — go <tier>?" and let the user override.
 
-Set the chosen mode as a variable for the rest of the workflow.
+Set the chosen mode as a variable for the rest of the workflow. If the user picks
+**full**, also capture `plan_approval` — see the follow-up subsection immediately
+below.
+
+### Full-mode follow-up: skip manual plan approval?
+
+When the user picks **full**, ask one follow-up via `AskUserQuestion`:
+
+> The full-mode plan is reviewed by reviewer agents automatically. After that
+> passes, do you want a manual approval gate before implementation, or should
+> I proceed directly?
+
+Options:
+- **Block for my approval** (default) — current behavior; present the plan and wait.
+- **Proceed directly to implementation** — when the idea has been discussed
+  thoroughly and open questions are resolved, skip the human gate after the
+  reviewer pass comes back clean.
+
+Record this as `plan_approval = manual | auto` for Phase 3. Default to `manual`
+if not asked (e.g. the user already declared their preference upthread, or the
+session was compacted and the variable was lost — `manual` is the safe default).
+The variable is intentionally ephemeral: it lives only in session memory between
+Phase 2 and Phase 3, not in plan frontmatter. Only offer the question in full
+mode; light mode handles its own opt-in for review at plan-approval time (see
+Phase 3). The asymmetry is intentional: light asks at plan-approval because the
+plan summary is the relevant signal for whether to add review; full asks at
+sizing because by the time the plan is on screen the auto-skip is moot (the user
+is already reading).
 
 ### How the mode propagates
+
+This subsection covers the `mode` variable specifically. `plan_approval` is
+in-session only — see the follow-up subsection above for its scope.
 
 - For skills (`/dev:plan`): pass mode as `mode=<value>` in the args string, e.g.
   `"<task description>; mode=light"`. The plan skill defaults to `full` if the
@@ -102,9 +132,21 @@ session breaks, restart from `/dev:next`.
 
 - Run `/dev:plan` with the chosen mode. It will produce a **single implementation
   plan document**, no PRD.
-- Skip `/dev:review-plan` entirely. The human approval at the next step is the gate.
-- Present the plan to the user. Wait for explicit approval before implementing.
-- Once approved, update plan frontmatter: `status: approved`.
+- Skip `/dev:review-plan` by default. The human approval at the next step is the gate.
+- Present the plan to the user with a short overview of what it contains, then ask
+  via `AskUserQuestion` how they want to proceed:
+  - **Approve and implement** (default) — go straight to Phase 4.
+  - **Run plan reviewers first, then implement** — for when the user is content with
+    the summary but wants a reviewer pass for safety. Spawn
+    `dev:coordinator:review-plan-coordinator` (same call as full mode), let it loop
+    to clean, surface its summary, then proceed to Phase 4 without a second approval
+    gate. The coordinator handles its own escalations to the user inside its
+    context, so by the time you read the summary any open product questions have
+    already been answered — there is nothing left to re-prompt for.
+  - **Request changes** — relay feedback to `/dev:plan` or revise inline, then
+    re-present.
+- Once the user has chosen approve (with or without the reviewer pass), update plan
+  frontmatter: `status: approved`.
 
 ### Full mode
 
@@ -116,9 +158,18 @@ session breaks, restart from `/dev:next`.
   needs it to invoke `/dev:review-plan` correctly. The coordinator runs the skill in
   its own context, loops until clean, and returns a structured summary. You only see
   the summary, not the per-reviewer findings or fix history.
-- Present the polished, reviewed plan to the user along with the coordinator's
-  summary. Wait for explicit approval.
-- Once approved, update plan frontmatter: `status: approved`.
+- Branch on `plan_approval` (set in Phase 2):
+  - **`manual`** (default) — present the polished, reviewed plan to the user along
+    with the coordinator's summary. Wait for explicit approval.
+  - **`auto`** — print a brief recap, then proceed directly to Phase 4 without an
+    `AskUserQuestion`. Recap shape: one line for the plan path, one line for the
+    coordinator's verdict (e.g. "reviewers converged clean after N rounds"), and
+    one line acknowledging auto-proceed. Don't expand into a re-summary of the
+    plan or the findings — the user opted out of reviewing them. The coordinator
+    already handles its own escalations inside its context, so reaching this
+    point means reviewers converged without an unresolved product question. The
+    recap is informational only; do not pause for it.
+- Once approved (or auto-proceeded), update plan frontmatter: `status: approved`.
 
 ## Phase 4: Implement + Review
 
@@ -196,8 +247,14 @@ Ask the user to:
 
 ## Important
 
-- **Never skip human checkpoints.** Wait for explicit approval at task confirmation,
-  sizing (implicit via AskUserQuestion), plan approval (light, full), and verification.
+- **Never skip human checkpoints unless the user explicitly opted out.** Wait for
+  explicit approval at task confirmation, sizing (implicit via AskUserQuestion),
+  plan approval (light, full), and verification. The full-mode plan-approval gate
+  is the only one that can be waived — and only when the user picked
+  `plan_approval = auto` in Phase 2. Light-mode "Run reviewers first, then
+  implement" is not a skipped gate: the user's choice of that option *is* the
+  approval; there's just no second gate after the reviewer pass. Verification is
+  never auto-skipped.
 - **Log issues as they occur** during implementation to
   `docs/design/plans/<task>/issues.md` (light, full only — minimal has no plan dir).
   `/dev:learn` consumes this file and renames it to `issues-processed.md` afterwards.

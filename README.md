@@ -12,7 +12,7 @@ The plugin provides a full development workflow:
 2. **Investigate** — pick from the project plan, or scope a user-provided task
 3. **Size** — choose a workflow tier (minimal, light, full) appropriate to the task
 4. **Plan** — produce planning documents matched to the tier
-5. **Review** — spawn reviewer agents in parallel, loop until clean (light, full)
+5. **Review** — spawn reviewer agents in parallel, loop until clean (default in full; opt-in in light)
 6. **Implement** — execute the plan with mode-appropriate review checkpoints
 7. **Learn** — process issues into documentation improvements (light, full)
 
@@ -30,7 +30,7 @@ Plus supporting skills:
 | `/dev:ideate` | Turn a vague problem or half-formed idea into a concrete next step |
 | `/dev:investigate` | Propose the next task to work on (from plan or from argument) |
 | `/dev:plan` | Create planning documents (light: plan only; full: PRD + plan) |
-| `/dev:review-plan` | Review a plan with all discovered reviewers (full mode) |
+| `/dev:review-plan` | Review a plan with all discovered reviewers (full mode by default; opt-in from light mode) |
 | `/dev:implement` | Execute an approved plan with mode-appropriate review checkpoints |
 | `/dev:review-impl` | Review implementation code with all discovered reviewers |
 | `/dev:learn` | Process the issues journal into doc improvements |

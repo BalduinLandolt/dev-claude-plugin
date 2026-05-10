@@ -34,8 +34,8 @@ agents/
 **Workflow pipeline**: `next` is the top-level orchestrator skill. It accepts an optional task description as argument (otherwise picks from the project plan), runs `investigate`, then prompts the user to pick a workflow mode (`minimal`, `light`, or `full`). The mode determines which downstream skills run and how heavy each one is:
 
 - **minimal** — built-in plan mode → `implement` (single comprehensive review, no loop) → human verify → optional PR.
-- **light** — `plan` (single document, no PRD) → human approval → `implement` (full review-impl loop) → human verify → `learn` → `prepare-pr`.
-- **full** — `plan` (PRD + plan) → `review-plan` → human approval → `implement` (test-reviewer + full review-impl loop) → human verify → `learn` → `prepare-pr`.
+- **light** — `plan` (single document, no PRD) → human approval (with optional opt-in to `review-plan`) → `implement` (full review-impl loop) → human verify → `learn` → `prepare-pr`.
+- **full** — `plan` (PRD + plan) → `review-plan` → human approval (or auto-proceed if the user opted out at sizing) → `implement` (test-reviewer + full review-impl loop) → human verify → `learn` → `prepare-pr`.
 
 `ideate` is upstream of `investigate` and optional. Use it to explore problems or sanity-check ideas before committing to a workflow run. Skills invoke each other via the `Skill` tool.
 
