@@ -182,7 +182,17 @@ Append a `## <ISO 8601 timestamp> — <event>` entry, 1-3 lines body, at:
 - **Round start** (per round): "review-impl round <N> spawning <K> reviewers"
   with the resolved set.
 - **After all reviewers return** (per round): "review-impl round <N>
-  collected" with finding counts.
+  collected" with (a) Critical/Warning/Suggestion totals across the set,
+  and (b) a "Clean reviewers" sub-list. For each reviewer that returned
+  no Critical and no Warning (Suggestions are non-blocking and don't
+  count as clean-breaking), include one line: `<reviewer-name>: <first
+  sentence of their Summary>`. Skip reviewers already attributed in the
+  finding bullets above; they have per-reviewer evidence already. If a
+  clean reviewer's response has no `### Summary` section (rare
+  misformat), record the line as `<reviewer-name>: (no Summary section
+  returned)` rather than fabricating one. This fills the trace's gap
+  on silent reviewers, so every reviewer's actual return leaves a mark
+  the coordinator's summary-vs-trace verification can cross-check.
 - **Fix phase** (per round, if any fixes applied): "review-impl round <N>
   fixes" with the file list.
 - **Convergence**: "review-impl converged after <N> rounds" (or "review-impl

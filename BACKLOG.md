@@ -19,6 +19,21 @@ fresh "by the way" ideas that haven't been thought through.
 
 ## Open entries
 
+### Reviewer registry duplicated across four files
+
+The 9 plugin reviewer names (`dev:review:architecture-reviewer` … `spec-compliance-reviewer`)
+are listed verbatim in four places: `skills/review-plan/SKILL.md` step 1,
+`skills/review-impl/SKILL.md` step 1, `agents/coordinator/review-plan-coordinator.md`
+step 1, and `agents/coordinator/review-impl-coordinator.md` step 1. Each list is
+authored independently because LLM context per-agent is separate (no runtime DRY
+benefit), but adding or removing a reviewer means updating all four in sync,
+with no enforcement that they stay aligned.
+
+Options when this gets refactored: extract a `REVIEWERS.md` reference file that
+each skill / coordinator points to (compactness vs. explicit-context tradeoff),
+or add an audit check that compares the four lists. Deferred because the registry
+is stable in practice; surfaced during the registry-check rollout review.
+
 ### test-reviewer agent location ambiguity
 
 `agents/test-reviewer.md` lives at the root of `agents/` (no subdirectory),

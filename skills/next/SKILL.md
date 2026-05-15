@@ -144,9 +144,9 @@ relaying the result:
 - **Coordinator trace** path (a `**Coordinator trace**: <path>` line in the
   summary) — points to `docs/design/plans/<task>/coordinator-trace.md`, a
   longer structural log appended throughout the run. Mention the path so the
-  user can audit deeper if they want. The file is implementation scratch and
-  is cleaned up in Phase 7 (Learn) along with `worker-logs/`; the user does
-  not need to delete it manually.
+  user can audit deeper if they want. The file is preserved by `/dev:learn`
+  (committed alongside the PRD and plan), so the audit record survives in git
+  history and can be inspected later.
 
 Skipping either hook defeats the purpose — these hooks are the user's only
 window into what happened inside the coordinator's context, since the
@@ -290,9 +290,9 @@ Ask the user to:
 - **Minimal**: skip. Issues journals are usually empty for trivial tasks, and
   there is no plan directory holding scratch files to clean up.
 - **Light, Full**: run `/dev:learn` to process any issues logged during
-  implementation. `/dev:learn` also deletes `coordinator-trace.md` and
-  `worker-logs/` (per the hand-off protocol — both are intentionally
-  ephemeral).
+  implementation. `/dev:learn` deletes `worker-logs/` (intentionally ephemeral)
+  but preserves `coordinator-trace.md`, staging it alongside the PRD and plan
+  for post-hoc audit.
 
 ## Phase 8: Complete
 

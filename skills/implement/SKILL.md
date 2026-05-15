@@ -44,11 +44,11 @@ own the loop and the git state.
 
 Throughout the run, append structural entries to
 `docs/design/plans/<task>/coordinator-trace.md`. The trace is a *post-hoc audit
-record* — it lets the user (or the orchestrator) verify that you followed your
-contract: which subagents you spawned, in what order, what they returned. It is
-not user-facing narrative; it is not gitignored by default but is deleted by
-`/dev:learn` along with `worker-logs/`. Consuming projects may add
-`coordinator-trace.md` to `.gitignore` if they prefer.
+record*: it lets the user (or the orchestrator) verify that you followed your
+contract, recording which subagents you spawned, in what order, what they
+returned. It is not user-facing narrative. It is preserved by `/dev:learn`
+(committed alongside the PRD and plan) so the audit record survives in git
+history; worker-logs are still deleted by `/dev:learn`, only the trace is kept.
 
 Append a `## <ISO 8601 timestamp> — <event>` entry, with a 1-3 line body, at
 each of these moments:
