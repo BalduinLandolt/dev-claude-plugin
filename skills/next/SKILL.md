@@ -95,19 +95,15 @@ is already reading).
 
 ### How the mode propagates
 
-This subsection covers the `mode` variable specifically. `plan_approval` is
-in-session only — see the follow-up subsection above for its scope.
+Covers `mode` only; `plan_approval` is in-session, scoped to the follow-up
+subsection above.
 
-- For skills (`/dev:plan`): pass mode as `mode=<value>` in the args string, e.g.
-  `"<task description>; mode=light"`. The plan skill defaults to `full` if the
-  arg is missing.
-- For coordinator agents (`dev:coordinator:implement-coordinator`,
-  `dev:coordinator:review-plan-coordinator`, `dev:coordinator:review-impl-coordinator`):
-  pass mode in the agent's prompt; the coordinator forwards it to the underlying
-  skill internally.
-- **Use the full namespaced name when spawning plugin coordinators.** Bare names
-  (`implement-coordinator`, `review-plan-coordinator`) fail because the loader
-  namespaces plugin-provided agents under `dev:<category>:`.
+Mode-consuming downstream skills (`/dev:plan`, `/dev:implement`, `/dev:review-impl`)
+take it as `mode=<value>` in the args string passed to the `Skill` tool, e.g.
+`"<task description>; mode=light"`. `/dev:plan` defaults to `full` if missing;
+`/dev:implement` and `/dev:review-impl` default to looping (the heavier
+behaviour). `/dev:review-plan` ignores mode — it always runs the full
+review-loop, since it is only invoked when reviewing is actually wanted.
 
 ### Recording the mode persistently
 
@@ -120,45 +116,6 @@ similar). If working direct-to-main is allowed and chosen, the mode lives only i
 session memory — acceptable for trivial fixes that complete in one session, but if the
 session breaks, restart from `/dev:next`.
 
-## Coordinator hand-off protocol
-
-Phase 3 and Phase 4 read compact summaries from coordinator subagents. The
-orchestrator spawns `review-plan-coordinator` directly (Phase 3 full mode,
-plus the optional Phase 3 light-mode reviewer pass) and `implement-coordinator`
-directly (Phase 4). It also spawns `review-impl-coordinator` directly in one
-narrow case: the `next-action=run-final-review` fallback in Phase 4. The
-nested `review-impl-coordinator` that runs inside `implement-coordinator`'s
-context is not the orchestrator's spawn — never spawn it during the normal
-Phase 4 flow.
-
-In light and full modes, every coordinator summary contains two visibility
-hooks the orchestrator must surface to the user (minimal mode is the
-exception — see the carve-out below). Do not compress them away when
-relaying the result:
-
-- **Run trace** (a section of broad-strokes bullets in the summary) — the
-  user-facing record of what happened inside the coordinator's context:
-  rounds run, reviewers invoked, worker steps completed, escalations
-  resolved. Relay the bullets at each hand-off so the user sees *what
-  happened*, not just *what was delivered*.
-- **Coordinator trace** path (a `**Coordinator trace**: <path>` line in the
-  summary) — points to `docs/design/plans/<task>/coordinator-trace.md`, a
-  longer structural log appended throughout the run. Mention the path so the
-  user can audit deeper if they want. The file is preserved by `/dev:learn`
-  (committed alongside the PRD and plan), so the audit record survives in git
-  history and can be inspected later.
-
-Skipping either hook defeats the purpose — these hooks are the user's only
-window into what happened inside the coordinator's context, since the
-orchestrator never sees the per-reviewer findings or per-step worker reports
-directly.
-
-Minimal-mode behaviour: there is no plan directory, so the trace file is not
-written. The `implement-coordinator` summary still arrives, but its
-`Coordinator trace` field reads `n/a in minimal mode` and the Run trace
-bullets are omitted by the coordinator. Surface the rest of the summary
-normally; just don't try to surface either hook (there's nothing there).
-
 ## Phase 3: Plan + Approve
 
 ### Minimal mode
@@ -169,21 +126,18 @@ normally; just don't try to surface either hook (there's nothing there).
 
 ### Light mode
 
-- Run `/dev:plan` with the chosen mode. It will produce a **single implementation
-  plan document**, no PRD.
+- Invoke `/dev:plan` via the `Skill` tool with the chosen mode. It produces a
+  **single implementation plan document**, no PRD.
 - Skip `/dev:review-plan` by default. The human approval at the next step is the gate.
 - Present the plan to the user with a short overview of what it contains, then ask
   via `AskUserQuestion` how they want to proceed:
   - **Approve and implement** (default) — go straight to Phase 4.
   - **Run plan reviewers first, then implement** — for when the user is content with
-    the summary but wants a reviewer pass for safety. Spawn
-    `dev:coordinator:review-plan-coordinator` (same call as full mode), let it loop
-    to clean, then surface its summary per the Coordinator hand-off protocol
-    (Run trace bullets + Coordinator trace path), and proceed to Phase 4 without
-    a second approval gate. The coordinator handles its own escalations to the
-    user inside its context, so by the time you read the summary any open
-    product questions have already been answered — there is nothing left to
-    re-prompt for.
+    the summary but wants a reviewer pass for safety. Invoke `/dev:review-plan`
+    via the `Skill` tool (same call as full mode), let it loop to clean, then
+    proceed to Phase 4 without a second approval gate. The review skill handles
+    its own escalations to the user, so by the time it returns any open product
+    questions have already been answered.
   - **Request changes** — relay feedback to `/dev:plan` or revise inline, then
     re-present.
 - Once the user has chosen approve (with or without the reviewer pass), update plan
@@ -191,46 +145,29 @@ normally; just don't try to surface either hook (there's nothing there).
 
 ### Full mode
 
-- Run `/dev:plan` with the chosen mode. It will produce a PRD plus an implementation
-  plan document.
-- Spawn the `dev:coordinator:review-plan-coordinator` agent immediately. Do not ask
-  permission first; review is part of planning. Pass the plan directory path
-  (`docs/design/plans/<task>/`) explicitly in the agent's prompt — the coordinator
-  needs it to invoke `/dev:review-plan` correctly. The coordinator runs the skill in
-  its own context, loops until clean, and returns a structured summary. You only see
-  the summary, not the per-reviewer findings or fix history.
-- Surface the coordinator's summary per the Coordinator hand-off protocol —
-  the Run trace bullets and the Coordinator trace path get relayed in both
-  branches below; the branches differ only in whether you also wait for
-  approval afterwards.
+- Invoke `/dev:plan` via the `Skill` tool with the chosen mode. It produces a PRD
+  plus an implementation plan document.
+- Invoke `/dev:review-plan` via the `Skill` tool immediately. Do not ask permission
+  first; review is part of planning. Pass the plan directory path
+  (`docs/design/plans/<task>/`) in the args. The skill loops until clean.
 - Branch on `plan_approval` (set in Phase 2):
-  - **`manual`** (default) — present the polished, reviewed plan to the user
-    along with the coordinator's summary (including the Run trace bullets and
-    the Coordinator trace path). Wait for explicit approval.
-  - **`auto`** — present the same summary (Run trace bullets + Coordinator
-    trace path + plan path), append one line acknowledging auto-proceed, then
-    continue directly to Phase 4 without an `AskUserQuestion`. Don't expand
-    into a re-summary of the plan or the per-reviewer findings — the user
-    opted out of reviewing them. The coordinator already handles its own
-    escalations inside its context, so reaching this point means reviewers
-    converged without an unresolved product question. The summary is
-    informational only; do not pause for it.
+  - **`manual`** (default) — present the polished, reviewed plan to the user.
+    Wait for explicit approval.
+  - **`auto`** — present a one-line acknowledgement that reviewers converged
+    and auto-proceed is in effect, then continue directly to Phase 4 without
+    an `AskUserQuestion`. The review skill already handles its own
+    escalations, so reaching this point means reviewers converged without an
+    unresolved product question.
 - Once approved (or auto-proceeded), update plan frontmatter: `status: approved`.
 
 ## Phase 4: Implement + Review
 
-Spawn the `dev:coordinator:implement-coordinator` agent. Do not invoke `/dev:implement`
-directly — the coordinator runs the implement loop in its own context, dispatches
-per-step work to stateless workers (`dev:coordinator:implement-worker`), runs the
-review checkpoints, and returns a structured summary. The orchestrator (you) only sees
-that summary, not the per-step worker reports, journal entries, test output, or
-reviewer findings.
+Invoke `/dev:implement` via the `Skill` tool. The implement skill runs the worker
+loop (dispatching per-step work to stateless `dev:coordinator:implement-worker`
+agents), runs the review checkpoints, and returns when implementation is complete
+or it hits a blocker.
 
-When the summary returns, follow the Coordinator hand-off protocol — the Run
-trace bullets and the Coordinator trace path get relayed to the user when
-you present the result. Do not compress them away.
-
-Pass in the agent's prompt:
+Pass in the skill args:
 
 - The mode (`minimal`, `light`, or `full`).
 - **Light, full**: the plan directory path (`docs/design/plans/<task>/`) plus the
@@ -239,40 +176,26 @@ Pass in the agent's prompt:
   plan document on disk in minimal mode.
 - A short reminder of the task intent.
 
-Mode-specific behavior is handled inside the coordinator (via the implement skill):
+Mode-specific behavior is handled inside the implement skill:
 
 - **Minimal**: no test-reviewer checkpoint at all; run a single comprehensive review
-  at the end (one round, no loop) via `dev:coordinator:review-impl-coordinator` with
+  at the end (one round, no loop) by invoking `/dev:review-impl` via `Skill` with
   `mode=minimal`.
 - **Light**: skip the test-reviewer checkpoint if no new tests; run the full review
-  loop at the end via `dev:coordinator:review-impl-coordinator` with `mode=light`.
+  loop at the end via `/dev:review-impl` with `mode=light`.
 - **Full**: test-reviewer after the worker loop completes (when tests were written),
-  then full review loop via `dev:coordinator:review-impl-coordinator` with
-  `mode=full`.
+  then full review loop via `/dev:review-impl` with `mode=full`.
 
-Read the summary. If status is `complete`, proceed to Phase 5.
+If the skill returns cleanly, proceed to Phase 5.
 
-If status is `yielded` or `blocked`, follow the named next action. The one
-non-obvious recipe: `next-action=run-final-review` (fallback for a rejected
-deep spawn at the final review checkpoint) — spawn
-`dev:coordinator:review-impl-coordinator` yourself with the same mode and plan
-path. This is the one normal-flow path where the orchestrator spawns
-`review-impl-coordinator` directly; the Coordinator hand-off protocol applies
-to its summary too (Run trace bullets + Coordinator trace path). On clean,
-proceed to Phase 5; on unclean, surface findings to the user and pause. For
-other yields (user questions, real blockers), follow the standard escalation
-pattern: relay, gather the user's answer, then either re-spawn the
-implement-coordinator to resume from on-disk state or pause if the issue
-can't be resolved without further input.
-
-When you present the result to the user (implementation complete, reviewers
-clean), include the implement-coordinator's Run trace bullets and the
-Coordinator trace path per the hand-off protocol — that is the user's only
-window into what happened inside the coordinator's context.
+If the skill yields with a blocker (user question, real plan problem), follow the
+standard escalation pattern: relay the issue, gather the user's answer, then
+re-invoke `/dev:implement` to resume from on-disk state (plan checkboxes,
+journal, and commits all persist between invocations).
 
 ## Phase 5: Update Documentation
 
-Handled inside the implement-coordinator (via the implement skill body):
+Handled inside the implement skill body:
 - Update developer documentation as specified in CLAUDE.md.
 - If user-facing changes, update user guide as specified in CLAUDE.md.
 - Skip in minimal mode unless the change is genuinely user-visible.
@@ -290,9 +213,7 @@ Ask the user to:
 - **Minimal**: skip. Issues journals are usually empty for trivial tasks, and
   there is no plan directory holding scratch files to clean up.
 - **Light, Full**: run `/dev:learn` to process any issues logged during
-  implementation. `/dev:learn` deletes `worker-logs/` (intentionally ephemeral)
-  but preserves `coordinator-trace.md`, staging it alongside the PRD and plan
-  for post-hoc audit.
+  implementation. `/dev:learn` deletes `worker-logs/` (intentionally ephemeral).
 
 ## Phase 8: Complete
 

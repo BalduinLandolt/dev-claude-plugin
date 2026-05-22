@@ -66,22 +66,16 @@ from `.claude/conventions/` files.
 ### Learning
 - **doc-improver** — triage implementation issues into documentation fixes
 
-### Coordinator (context-isolation wrappers)
-- **review-plan-coordinator** — runs `/dev:review-plan` in an isolated subagent
-  context, returns a compact structured summary
-- **review-impl-coordinator** — runs `/dev:review-impl` in an isolated subagent
-  context, returns a compact structured summary
-- **implement-coordinator** — runs `/dev:implement` in an isolated subagent
-  context, returns a compact structured summary; inside its loop the implement
-  skill spawns one stateless **implement-worker** per plan step
+### Worker
 - **implement-worker** — stateless per-step executor: writes tests + code, runs
   tests, returns a ~200-word report, context discarded after each step
 
-`/dev:next` spawns the review-plan-coordinator and the implement-coordinator
-directly. The implement-coordinator (via the implement skill body) spawns the
-implement-worker agents and the review-impl-coordinator at its review checkpoints.
-The orchestrator's context only sees the coordinator summaries, not the per-step
-worker reports, per-reviewer findings, or fix histories.
+`/dev:next` invokes downstream skills (`/dev:plan`, `/dev:review-plan`,
+`/dev:implement`, `/dev:review-impl`) via the `Skill` tool. `Skill` runs the
+called skill body in the caller's context (no subagent boundary), so the
+chain stays in the orchestrator's window. Each skill body then `Agent`-spawns
+its workers and reviewers — a single depth-1 spawn from the orchestrator,
+which is the depth Claude Code currently supports reliably.
 
 ## Installation
 

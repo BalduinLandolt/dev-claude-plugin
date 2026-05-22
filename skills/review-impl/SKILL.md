@@ -100,8 +100,7 @@ local file's frontmatter to pick up `rerun: always`.
 Launch the resolved reviewer set **in parallel**, each reviewing the changed files.
 
 State the resolved set in a one-line note before spawning, e.g. "Spawning 9 reviewers:
-8 plugin + 1 local (`domain-reviewer`); 0 disabled." This makes the count visible above
-any wrapping coordinator.
+8 plugin + 1 local (`domain-reviewer`); 0 disabled." This makes the count visible.
 
 Reviewers self-gate when irrelevant to the change (e.g., `rust-reviewer` returns early
 if no `*.rs` files changed), so running the full plugin set on every review is cheap.
@@ -167,37 +166,3 @@ Reviewers that were clean in the previous round, are not `rerun: always`, and ar
 flagged by your judgment do **not** re-run. They're considered done for this loop.
 
 Repeat until no critical or warning findings remain among the reviewers that ran.
-
-## Trace log (light, full)
-
-Throughout the loop, append structural entries to
-`<plan-directory>/coordinator-trace.md` (the same trace file `/dev:implement`
-uses, when this skill runs as the implementation review checkpoint). The
-trace lets the user or orchestrator verify which reviewers ran in which round
-and what they returned. **Skip in `mode=minimal`** — no plan directory.
-
-Append a `## <ISO 8601 timestamp> — <event>` entry, 1-3 lines body, at:
-
-- **Skill start**: "review-impl skill started" with mode.
-- **Round start** (per round): "review-impl round <N> spawning <K> reviewers"
-  with the resolved set.
-- **After all reviewers return** (per round): "review-impl round <N>
-  collected" with (a) Critical/Warning/Suggestion totals across the set,
-  and (b) a "Clean reviewers" sub-list. For each reviewer that returned
-  no Critical and no Warning (Suggestions are non-blocking and don't
-  count as clean-breaking), include one line: `<reviewer-name>: <first
-  sentence of their Summary>`. Skip reviewers already attributed in the
-  finding bullets above; they have per-reviewer evidence already. If a
-  clean reviewer's response has no `### Summary` section (rare
-  misformat), record the line as `<reviewer-name>: (no Summary section
-  returned)` rather than fabricating one. This fills the trace's gap
-  on silent reviewers, so every reviewer's actual return leaves a mark
-  the coordinator's summary-vs-trace verification can cross-check.
-- **Fix phase** (per round, if any fixes applied): "review-impl round <N>
-  fixes" with the file list.
-- **Convergence**: "review-impl converged after <N> rounds" (or "review-impl
-  single-round complete" in minimal).
-- **Escalation** (if any): "review-impl escalated" with one-line reason.
-
-If the trace file does not exist, create it. If it exists (because this skill
-runs inside `/dev:implement`'s flow), append.

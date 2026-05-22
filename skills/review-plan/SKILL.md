@@ -55,8 +55,7 @@ local file's frontmatter to pick up `rerun: always`.
 Launch the resolved reviewer set **in parallel**, each reviewing the plan documents.
 
 State the resolved set in a one-line note before spawning, e.g. "Spawning 9 reviewers:
-8 plugin + 1 local (`domain-reviewer`); 0 disabled." This makes the count visible above
-any wrapping coordinator.
+8 plugin + 1 local (`domain-reviewer`); 0 disabled." This makes the count visible.
 
 If the resolved set is empty (no plugin reviewers reachable AND no local reviewers —
 should not happen in a normal install), warn the user with the cause and skip the
@@ -118,35 +117,3 @@ then is the plan considered reviewed.
 ### 6. Update Status
 
 Update the plan document frontmatter: `status: reviewed`
-
-## Trace log
-
-Throughout the loop, append structural entries to
-`<plan-directory>/coordinator-trace.md` (the same trace file `/dev:implement`
-uses, if this run is part of a larger task). The trace lets the user or
-orchestrator verify which reviewers ran in which round and what they returned.
-
-Append a `## <ISO 8601 timestamp> — <event>` entry, 1-3 lines body, at:
-
-- **Round start** (per round): "review-plan round <N> spawning <K> reviewers"
-  with the resolved set (e.g., "8 plugin + 1 local; security-reviewer
-  disabled").
-- **After all reviewers return** (per round): "review-plan round <N>
-  collected" with (a) Critical/Warning/Suggestion totals across the set,
-  and (b) a "Clean reviewers" sub-list. For each reviewer that returned
-  no Critical and no Warning (Suggestions are non-blocking and don't
-  count as clean-breaking), include one line: `<reviewer-name>: <first
-  sentence of their Summary>`. Skip reviewers already attributed in the
-  finding bullets above; they have per-reviewer evidence already. If a
-  clean reviewer's response has no `### Summary` section (rare
-  misformat), record the line as `<reviewer-name>: (no Summary section
-  returned)` rather than fabricating one. This fills the trace's gap
-  on silent reviewers, so every reviewer's actual return leaves a mark
-  the coordinator's summary-vs-trace verification can cross-check.
-- **Fix phase** (per round, if any fixes applied): "review-plan round <N>
-  fixes" with the file list.
-- **Convergence**: "review-plan converged after <N> rounds".
-- **Escalation** (if any): "review-plan escalated" with one-line reason.
-
-If the trace file does not exist, create it. If it exists (because this skill
-runs inside `/dev:implement`'s flow), append.

@@ -21,56 +21,28 @@ allowed-tools:
 Execute the approved implementation plan. The orchestrator passes the workflow `mode`,
 which adjusts review depth, documentation expectations, and the issues journal.
 
-This skill is normally invoked inside the `dev:coordinator:implement-coordinator` agent,
-which provides context isolation from the orchestrator. You (the agent running this
-skill body) are referred to here as the **coordinator**: you read the plan, dispatch
-per-step work to stateless `dev:coordinator:implement-worker` agents, manage commits at
-review-unit boundaries, and run review checkpoints. Workers write the actual code; you
-own the loop and the git state.
+You own the implementation loop: read the plan, dispatch per-step work to stateless
+`dev:coordinator:implement-worker` agents, manage commits at review-unit boundaries,
+and run review checkpoints. Workers write the actual code; you own the loop and the
+git state.
 
 ## Setup
 
+Setup is **idempotent** — the orchestrator may re-invoke `/dev:implement` to
+resume after a yield or a user redirect, so each step here must handle the
+case where the artefact already exists.
+
 1. Read the approved plan (skip in **minimal** mode — there is no plan document; work
-   from the in-session plan that the orchestrator inlined in your prompt).
-2. Create a feature branch: `<type>/<number>-<slug>` (see docs/process/GIT_WORKFLOW.md).
-   In minimal mode, if the repo allows direct-to-main (per project CLAUDE.md), you may
-   work on `main` directly; otherwise create a branch as usual.
-3. Create the issues journal: `docs/design/plans/<task>/issues.md`. **Skip in minimal
+   from the in-session plan that the orchestrator inlined in your args).
+2. Branch: if a feature branch matching the task's expected name already exists
+   (`<type>/<number>-<slug>` in light/full mode, `minimal/<slug>` in minimal
+   mode), `git checkout` it. Otherwise create it (see docs/process/GIT_WORKFLOW.md).
+   In minimal mode, if the repo allows direct-to-main (per project CLAUDE.md),
+   stay on `main` instead.
+3. Issues journal: if `docs/design/plans/<task>/issues.md` already exists, leave
+   it in place — partially-filled journals from a prior invocation are picked up
+   as-is and appended to. Otherwise create an empty one. **Skip in minimal
    mode** — minimal tasks are not worth the journal overhead.
-4. Initialise the coordinator trace: `docs/design/plans/<task>/coordinator-trace.md`.
-   See **Trace log** below. **Skip in minimal mode**.
-
-## Trace log (light, full)
-
-Throughout the run, append structural entries to
-`docs/design/plans/<task>/coordinator-trace.md`. The trace is a *post-hoc audit
-record*: it lets the user (or the orchestrator) verify that you followed your
-contract, recording which subagents you spawned, in what order, what they
-returned. It is not user-facing narrative. It is preserved by `/dev:learn`
-(committed alongside the PRD and plan) so the audit record survives in git
-history; worker-logs are still deleted by `/dev:learn`, only the trace is kept.
-
-Append a `## <ISO 8601 timestamp> — <event>` entry, with a 1-3 line body, at
-each of these moments:
-
-- **Skill start**: "implement skill started" with mode and plan path.
-- **Before each `dev:coordinator:implement-worker` spawn**: "worker spawned
-  for step <id>" with a one-line step description.
-- **After each worker returns**: "worker returned for step <id>" with status,
-  files-changed count, tests pass/fail, and blockers (if any).
-- **Before the `test-reviewer` spawn** (if any): "test-reviewer spawned".
-- **After test-reviewer returns**: "test-reviewer returned" with critical and
-  warning counts.
-- **Before the `dev:coordinator:review-impl-coordinator` spawn**:
-  "review-impl-coordinator spawned" with mode.
-- **After it returns**: "review-impl-coordinator returned" with status, rounds
-  completed, finding counts.
-- **Skill return**: "implement skill returning" with overall status.
-
-The trace is structural, not narrative. Three lines per event is plenty.
-Workers and reviewers do not write to the trace themselves — the skill body
-records what it spawned and what each subagent returned. **Skip the entire
-trace mechanism in minimal mode** (no plan directory).
 
 ## Execution
 
@@ -151,11 +123,11 @@ code issues and process friction**. Code issues are the obvious case (bugs,
 test failures, follow-up work). Process friction is harness-level pain — the
 input to `/dev:learn`'s agent/skill-bug and discoverability-gap triage.
 
-You (the coordinator) see process friction the worker can't: a worker that
-needed 2-3 spawns before a step landed, a step description you had to refine
-mid-loop, a missing convention file that left a reviewer underpowered, a
-recurring blocker pattern across multiple workers. Log those yourself — they
-do not surface in any single worker's report.
+You see process friction the worker can't: a worker that needed 2-3 spawns
+before a step landed, a step description you had to refine mid-loop, a
+missing convention file that left a reviewer underpowered, a recurring
+blocker pattern across multiple workers. Log those yourself — they do not
+surface in any single worker's report.
 
 Append manually using the same entry format as workers:
 
@@ -184,37 +156,31 @@ with it. Behavior depends on mode.
 
 - **No test-reviewer checkpoint.** Minimal tasks usually don't introduce new tests;
   if they do, the test review is folded into the final review.
-- **One final review pass** when the worker loop has finished: spawn the
-  `dev:coordinator:review-impl-coordinator` agent with `mode=minimal` in its prompt.
-  The coordinator invokes `/dev:review-impl` in its own context, runs round 1 only
-  (because of the mode), and returns a structured summary. You only see the summary,
-  not the per-reviewer findings.
+- **One final review pass** when the worker loop has finished: invoke
+  `/dev:review-impl` via the `Skill` tool with `mode=minimal` in the args. It
+  runs round 1 only (because of the mode) and returns. Apply any fixes it
+  surfaces.
 - Skip the `/allium:weed` step.
 
 ### Light and full modes
 
 The two modes share the same checkpoint structure; only the `mode=` arg passed
-to the review-impl coordinator differs.
+to `/dev:review-impl` differs.
 
 - **Test-reviewer checkpoint** if the loop produced new tests. Spawn the
   `test-reviewer` agent (project-local, from `.claude/agents/review/`, addressed
-  by bare name — no coordinator wrapper, since this is a single-round
-  single-reviewer call and the isolation overhead isn't earned). Pass it the
-  plan and the list of test files. Fix Critical or Warning findings via a
-  worker spawn or a direct edit for tiny ones. Do not loop. Skip if no new
-  tests.
-- **Final review** when the test-reviewer checkpoint (if any) is clean: spawn
-  `dev:coordinator:review-impl-coordinator` with `mode=light` or `mode=full` in
-  its prompt. It runs the full review-impl loop in its own context and returns
-  a structured summary.
+  by bare name). Pass it the plan and the list of test files. Fix Critical or
+  Warning findings via a worker spawn or a direct edit for tiny ones. Do not
+  loop. Skip if no new tests.
+- **Final review** when the test-reviewer checkpoint (if any) is clean: invoke
+  `/dev:review-impl` via the `Skill` tool with `mode=light` or `mode=full` in
+  the args. It runs the full review-impl loop and returns when clean.
 - Run `/allium:weed` before the final review if the project uses behavioral
   specs and the change touches a spec'd area.
 
 In all modes, reviews run automatically — do not ask permission first; review is
-part of implementation. Only return to the spawning agent when the worker loop is
-done and the relevant reviews have converged. The orchestrator (one level up,
-outside this skill) presents the implement-coordinator's structured summary
-alongside the diff to the user.
+part of implementation. Only return when the worker loop is done and the
+relevant reviews have converged.
 
 ## Developer Documentation
 
@@ -244,5 +210,5 @@ the user could see, a tweaked label). Otherwise skip.
 
 When all plan steps are done, reviewers are clean, and documentation is updated:
 - Run the project's test, lint, and format-check commands one final time (see CLAUDE.md).
-- Return. The implement-coordinator (one level out) produces its summary and the
-  orchestrator presents it alongside the diff for human verification.
+- Return to the orchestrator. The orchestrator presents the diff and the
+  outcome to the user for human verification.
