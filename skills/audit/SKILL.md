@@ -85,7 +85,12 @@ Present a clear summary organized by category:
 For each missing or partial item, offer to create or fix it:
 
 - **Convention files**: Ask targeted questions about the project (architecture, threat
-  model, tech stack, etc.) and create the convention file based on answers.
+  model, tech stack, etc.) and create the convention file based on answers. For stacks
+  with a starter template under the greenfield skill's assets
+  (`../greenfield/assets/conventions/`, relative to this skill's directory — e.g.
+  `rust.md`), read it as a starting point and adapt it to the project rather than
+  copying it verbatim: fill in the `<!-- adapt -->` placeholders and drop sections that
+  do not apply.
 - **CLAUDE.md sections**: Add the missing sections based on what you can observe in the
   project (existing build files, directory structure, etc.).
 - **Just recipes**: Propose standard recipes based on the project's build tool.

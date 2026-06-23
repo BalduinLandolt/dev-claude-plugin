@@ -192,6 +192,14 @@ If the project uses the agent workflow (AI_AGENT_SETUP.md):
      `consistency.md`, `docs.md`
    - Stack-specific: `rust.md` for Rust projects, `frontend.md` for projects with a
      frontend, etc.
+   - For stacks that have a starter template under this skill's
+     `assets/conventions/` (e.g. `assets/conventions/rust.md`), read it as a starting
+     point and **adapt it to this project** — fill in the `<!-- adapt -->` placeholders
+     with the project's real crate/layer names, error types, test runner, and dependency
+     rules; delete sections that do not apply; add project-specific ones. Do not copy the
+     template verbatim. It encodes the harness's default opinions (e.g. the error-handling
+     rule: panic only for violated invariants, `Result` for expected failures, `expect`
+     with a justifying message over bare `unwrap`), which the project may refine.
    - Ask the user if they need custom reviewers for domain-specific concerns
 4. Run the review skills on the harness itself to catch issues
 5. Fix findings, re-review until clean

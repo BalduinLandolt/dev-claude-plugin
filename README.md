@@ -112,7 +112,9 @@ The plugin expects consuming projects to provide:
 1. **CLAUDE.md** — with build commands, documentation index, and architecture summary.
    Skills use CLAUDE.md to find project-specific paths.
 2. **`.claude/conventions/`** — convention files that reviewer agents read for
-   project-specific criteria (architecture rules, threat model, language idioms, etc.)
+   project-specific criteria (architecture rules, threat model, language idioms, etc.).
+   You don't have to write these from scratch: for stacks the plugin ships a starter
+   template for (e.g. Rust), `/dev:greenfield` and `/dev:audit` adapt it to your project.
 3. **Standard build recipes** — `just test`, `just lint`, `just fmt-check`, `just build`,
    `just dev` (or equivalent)
 4. **`docs/design/BACKLOG.md`** *(or alongside the project plan, wherever that lives)* — a
