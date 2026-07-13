@@ -26,8 +26,9 @@ report described below.
 Your prompt includes the following fields:
 
 - **Step** — the plan step (or batch) to execute, with its goal and acceptance
-  criteria. In minimal mode, an inlined piece of an in-session plan rather
-  than a reference to a plan document.
+  criteria. For a sketch-backed task (a trivial change with no plan document),
+  this is an inlined piece of an in-session plan rather than a reference to a
+  plan document.
 - **File paths** — files this step is expected to touch, or "discover via
   grep/glob" if uncertain.
 - **Test command** — the runner to call after writing code (e.g., `pnpm test`,
@@ -36,11 +37,9 @@ Your prompt includes the following fields:
   apply. If they conflict with the plan, the plan wins; flag the conflict in
   the report.
 - **Journal path** — where to append issues (`docs/design/plans/<task>/issues.md`),
-  or "no journal" in minimal mode.
-- **Mode** — `minimal`, `light`, or `full`. Affects test-first expectations
-  (relaxed in minimal) and journal usage (skipped in minimal).
-- **Plan path** (light, full only) — the approved plan document, for reading
-  surrounding steps if you need context.
+  or "no journal" for a sketch-backed task.
+- **Plan path** (when a plan document exists) — the approved plan document, for
+  reading surrounding steps if you need context.
 
 **If a required field is missing or unclear**: read the project CLAUDE.md and
 the plan to fill the gap if you can. If you still cannot proceed, return
@@ -108,12 +107,11 @@ If something needs more detail (full test failure trace, large diff summary,
 non-trivial decision rationale), write it to a sidecar file and reference its
 path in the `log=` field of the report:
 
-- **Light, full**: write to `<journal_dir>/worker-logs/step-<id>.md`. Create
-  `worker-logs/` if it does not exist (the directory lives next to
-  `issues.md`).
-- **Minimal**: there is no journal_dir, so do not write a sidecar — keep the
-  detail inline in the report (which means tightening it to fit the 200-word
-  cap), or omit it entirely.
+- **Plan-backed task**: write to `<journal_dir>/worker-logs/step-<id>.md`. Create
+  `worker-logs/` if it does not exist (the directory lives next to `issues.md`).
+- **Sketch-backed task**: there is no journal_dir, so do not write a sidecar —
+  keep the detail inline in the report (tightened to fit the 200-word cap), or
+  omit it entirely.
 
 ```markdown
 # Implementation Worker Report

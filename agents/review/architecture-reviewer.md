@@ -2,6 +2,7 @@
 name: architecture-reviewer
 description: Reviews code for layer boundary violations, dependency direction, and structural problems
 model: sonnet
+effort: low
 tools:
   - Glob
   - Grep

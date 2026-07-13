@@ -2,6 +2,7 @@
 name: topic-researcher
 description: Performs targeted web research on specific questions relevant to the current task
 model: sonnet
+effort: medium
 tools:
   - Read
   - WebSearch

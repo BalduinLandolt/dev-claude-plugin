@@ -114,16 +114,26 @@ git push -u origin HEAD
 PR descriptions must never include PII. Check `.claude/conventions/security.md` if it
 exists for the project's specific data sensitivity requirements.
 
+**Honor the project's and user's PR conventions.** Check the project CLAUDE.md,
+`docs/process/GIT_WORKFLOW.md`, and any stated user preferences for how PRs are
+opened — draft status, assignee, labels, reviewers — and apply whatever is
+defined. If nothing is defined, default to a **draft PR assigned to the repository
+owner**: a draft can be marked ready in one click, whereas an accidental ready PR
+may notify reviewers prematurely.
+
 Use `gh pr create` with:
 - A concise title (under 70 characters)
 - A body that includes:
   - Summary of what changed and why
   - Reference to the project plan item
   - Any decisions that deviate from the plan
+- The resolved flags for draft status, assignee, and any labels/reviewers
 
 ```bash
-gh pr create --title "..." --body "..."
+gh pr create --draft --assignee @me --title "..." --body "..."
 ```
+
+Drop or adjust `--draft` / `--assignee` if the resolved conventions say otherwise.
 
 ### 5. Report
 

@@ -72,12 +72,12 @@ is below, but not every project needs all of them — and some may need extras.
    transition rules, use `/allium:elicit` to discover them during this phase
 
 **Process** (`docs/process/` — reference all of the above):
-8. `docs/process/TESTING_STRATEGY.md` — what to test, how, testing pyramid, TDD approach
-9. `docs/process/REVIEW_GUIDELINES.md` — what "done" looks like, common mistakes
-10. `docs/process/GIT_WORKFLOW.md` — branching, PRs, commit conventions
-11. `docs/process/AI_AGENT_SETUP.md` — workflow harness, agent catalog, skills/commands
-12. `docs/design/PROJECT_PLAN.md` — master task checklist with dependency graph
-13. `docs/design/BACKLOG.md` — holding pen for "by the way" ideas surfaced
+9. `docs/process/TESTING_STRATEGY.md` — what to test, how, testing pyramid, TDD approach
+10. `docs/process/REVIEW_GUIDELINES.md` — what "done" looks like, common mistakes
+11. `docs/process/GIT_WORKFLOW.md` — branching, PRs, commit conventions
+12. `docs/process/AI_AGENT_SETUP.md` — workflow harness, agent catalog, skills/commands
+13. `docs/design/PROJECT_PLAN.md` — master task checklist with dependency graph
+14. `docs/design/BACKLOG.md` — holding pen for "by the way" ideas surfaced
     mid-task; triaged before starting the next task
 
 Present this list to the user and discuss:
@@ -227,4 +227,4 @@ At the end, verify:
 - The most important phase is Phase 1 (Intent) — everything else follows from it
 - Don't skip the review step after each document — early mistakes compound
 - The agent harness (Phase 6) is optional but recommended for AI-driven projects
-- Adapt the standard document set to the project — not every project needs all 12 docs
+- Adapt the standard document set to the project — not every project needs all of them

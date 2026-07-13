@@ -2,6 +2,7 @@
 name: codebase-researcher
 description: Explores the current codebase to understand project state, find relevant files, and identify patterns
 model: sonnet
+effort: low
 tools:
   - Glob
   - Grep

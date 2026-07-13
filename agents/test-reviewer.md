@@ -2,6 +2,7 @@
 name: test-reviewer
 description: Reviews tests to verify they encode the intended behavior from the plan or spec. Invoked once per task, at end of the implement loop (or after a tests-only step in plans that separate test-writing from implementation).
 model: sonnet
+effort: medium
 tools:
   - Glob
   - Grep

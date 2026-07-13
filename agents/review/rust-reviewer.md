@@ -2,6 +2,7 @@
 name: rust-reviewer
 description: Reviews Rust code for idioms, error handling, type design, unwrap avoidance, and crate usage
 model: sonnet
+effort: medium
 tools:
   - Glob
   - Grep

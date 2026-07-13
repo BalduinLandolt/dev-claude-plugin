@@ -1,7 +1,6 @@
 ---
 name: review-plan
-description: Spawn all discovered reviewer agents in parallel to find weaknesses in a plan. Loop until reviewers find no issues.
-argument-hint: "[path to plan directory]"
+description: Fan out reviewer agents over a plan to find weaknesses, adversarially verify their findings, fix, and loop until clean. Runs the fan-out in an isolated Workflow so reviewer transcripts never enter the orchestrator context.
 allowed-tools:
   - Glob
   - Grep
@@ -14,106 +13,85 @@ allowed-tools:
 
 # Review Plan
 
-Run the plan review loop: spawn reviewers, fix or escalate, repeat until clean.
+Run the plan review loop: fan out reviewers → verify findings → fix → repeat until clean.
+
+This shares the same fan-out engine as `review-impl`: the Workflow script
+`assets/review-fanout.workflow.js` (plugin root, two levels up from this skill).
+It runs the reviewers and the verification sub-agents in isolated contexts and
+returns only compact, verified findings — reviewer transcripts never land in the
+orchestrator window.
 
 ## Steps
 
-### 1. Discover and Spawn Reviewers
+### 1. Identify the plan documents
 
-The reviewer set is the union of the plugin's built-in reviewers and any project-local
-reviewers, with overrides.
+The plan directory (passed in the args, e.g. `docs/design/plans/<task>/`) holds
+the PRD (if any) and the implementation plan. Collect their paths.
 
-**Plugin reviewers** (default set, spawn by namespaced name):
+### 2. Discover and resolve the reviewer set
 
-- `dev:review:architecture-reviewer`
-- `dev:review:consistency-reviewer`
-- `dev:review:correctness-reviewer` *(rerun: always)*
-- `dev:review:docs-reviewer`
-- `dev:review:frontend-reviewer`
-- `dev:review:rust-reviewer`
-- `dev:review:security-reviewer` *(rerun: always)*
-- `dev:review:simplicity-reviewer`
-- `dev:review:spec-compliance-reviewer` *(rerun: always)*
+Identical to `review-impl` step 3 — discover, don't hardcode:
 
-**Project-local reviewers**: glob `.claude/agents/review/*.md`. Each file defines a
-reviewer agent spawned by its bare name (e.g., `architecture-reviewer`). Read each
-local file's frontmatter to pick up `rerun: always`.
+- **Plugin reviewers**: glob `../../agents/review/*.md` (relative to this skill's
+  directory); spawn by `agentType` `dev:review:<name>`; read frontmatter for
+  `effort`/`rerun`.
+- **Project-local reviewers**: glob `.claude/agents/review/*.md`; spawn by bare
+  `name`.
+- **Resolution**: same-name local overrides; else additive; `## Disabled
+  reviewers` in CLAUDE.md drops names.
 
-**Resolution rules** (apply in order):
+Build `[{ name, agentType, effort, rerun }]` and state the resolved count in one
+line. Warn and skip if the set is empty.
 
-1. **Same-name override**: if a project-local reviewer's name matches a plugin
-   reviewer's bare name (e.g., the project ships `architecture-reviewer.md`), the
-   local version replaces the plugin one. Only the local version runs.
-2. **Additive otherwise**: project-local reviewers whose names don't match any plugin
-   reviewer run *in addition to* the plugin set.
-3. **CLAUDE.md disables**: if the consuming project's `CLAUDE.md` has a section
-   `## Disabled reviewers` listing reviewer names (one per line, bullets or plain),
-   drop those from the final set entirely. This lets a project skip a plugin reviewer
-   without replacing it (e.g., projects with an external security gate may disable
-   `security-reviewer`).
+### 3. Round 1 — fan out via the Workflow
 
-Launch the resolved reviewer set **in parallel**, each reviewing the plan documents.
+Resolve the absolute path to `assets/review-fanout.workflow.js` and invoke the
+**Workflow** tool with it as `scriptPath`, passing `args` as a JSON object:
 
-State the resolved set in a one-line note before spawning, e.g. "Spawning 9 reviewers:
-8 plugin + 1 local (`domain-reviewer`); 0 disabled." This makes the count visible.
+```
+{
+  target: "plan",
+  round: 1,
+  changeSummary: "<one-paragraph orientation: what the plan proposes>",
+  planPaths: [<plan/PRD document paths>],
+  contextDocs: [<relevant docs/design and docs/process paths, per CLAUDE.md>],
+  reviewers: [<the resolved list>]
+}
+```
 
-If the resolved set is empty (no plugin reviewers reachable AND no local reviewers —
-should not happen in a normal install), warn the user with the cause and skip the
-loop.
+It returns `{ round, reviewers, findings: [{ reviewer, findings, summary }],
+flagged }`, findings already verified.
 
-Each agent receives:
-- The plan documents (PRD, implementation plans)
-- All relevant docs/ files for context (design specs in `docs/design/`, process docs in `docs/process/`)
+**If you do not have the Workflow tool**, read `../../assets/review-fallback.md`
+and use that spawning path for this step and the re-review step; everything else
+in this skill is unchanged. When the Workflow tool *is* available, do not read
+that file.
 
-### 2. Collect Findings
+### 4. Triage and fix
 
-Gather the standardized output from each reviewer (Critical / Warning / Suggestion).
+Triage: **Critical** (must fix before approval), **Warning** (fix if the
+solution is clear), **Suggestion** (consider, don't block).
 
-### 3. Triage Findings
+Fix findings **inline** — plan documents are small text, so editing them here is
+cheap and there is no code to keep off the main thread. Resolve the vast majority
+yourself from the project's documented intent and constraints. Escalate to the
+user only for a genuine product decision the docs can't settle. Do not escalate
+by default.
 
-For each finding:
-- **Critical**: must be addressed before the plan is approved
-- **Warning**: should be addressed, fix if the solution is clear
-- **Suggestion**: optional, consider but don't block on
+If you observe process friction (a reviewer that ran without its convention
+file, a recurring finding pattern suggesting a doc gap), log it: append to the
+task's `issues.md` with `**Category**: process` if one exists, else surface it
+under "Side notes".
 
-### 4. Fix
+### 5. Re-review
 
-Fix findings yourself. You should be able to resolve the vast majority of issues based on
-the project's documented intent and constraints. Only escalate to the user when you
-genuinely cannot determine the right course of action — for example, when a finding
-requires a product decision that isn't covered by existing documentation.
+Invoke the Workflow again with `round` incremented and a **reduced reviewer
+set** — the union of always-rerun reviewers (`rerun: always`), the returned
+`flagged` list, and any reviewer you judge newly relevant given your revisions.
+Reviewers clean last round and not `rerun: always` do not re-run. Repeat until no
+Critical/Warning findings remain, capped at **3 rounds** (surface anything still
+open after that rather than looping).
 
-**Do not escalate as a default.** "I'm not sure" is not a reason to escalate — read the
-docs, think about the intent, and make a judgment call. The user should only see questions
-that truly require their input.
+### 6. Update status
 
-If you observe **process friction** during the review — a reviewer that ran without its
-convention file, a recurring finding pattern that suggests a doc or skill gap, a reviewer
-set that needed an override the project should formalise — log it. If an issues journal
-exists for the surrounding task (`docs/design/plans/<task>/issues.md`, when this skill
-runs inside an implement flow), append an entry with `**Category**: process`. If running
-standalone (no journal), surface under "Side notes" in the summary instead.
-
-### 5. Re-Review
-
-After fixing, spawn a **reduced reviewer set** for round 2+. The set is the union of:
-
-- **Always-rerun reviewers**: any reviewer marked `rerun: always`. For plugin
-  reviewers, the always-rerun set is `correctness-reviewer`, `security-reviewer`,
-  `spec-compliance-reviewer` (spawned by their namespaced names). For project-local
-  reviewers, read each file's frontmatter to determine this.
-- **Reviewers that flagged**: any reviewer that produced a Critical or Warning finding
-  in the previous round.
-- **Orchestrator-judged reviewers**: any reviewer that you, as the orchestrator, judge
-  may now be relevant given the plan revisions you made. Use judgment — if a revision
-  obviously affects a concern that a clean reviewer covers, include them.
-
-Reviewers that were clean in the previous round, are not `rerun: always`, and aren't
-flagged by your judgment do **not** re-run. They're considered done for this loop.
-
-Repeat until no critical or warning findings remain among the reviewers that ran. Only
-then is the plan considered reviewed.
-
-### 6. Update Status
-
-Update the plan document frontmatter: `status: reviewed`
+Once clean, update the plan document frontmatter: `status: reviewed`.

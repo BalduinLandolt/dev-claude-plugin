@@ -2,6 +2,7 @@
 name: frontend-reviewer
 description: Reviews frontend code for thin-layer compliance, proper backend communication, and UI patterns
 model: sonnet
+effort: low
 tools:
   - Glob
   - Grep

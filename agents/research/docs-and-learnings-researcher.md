@@ -2,6 +2,7 @@
 name: docs-and-learnings-researcher
 description: Reads project documentation and learnings to find guidance relevant to the current task
 model: sonnet
+effort: low
 tools:
   - Glob
   - Grep
