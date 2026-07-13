@@ -74,11 +74,13 @@ Coding is isolated in a subagent; the code review runs here on the main thread,
 which has the Workflow tool.
 
 1. **Implement (isolated).** Spawn `dev:coordinator:phase-runner` with **Skill**
-   `/dev:implement`, passing the plan directory + plan filename (or, for a trivial
-   change, the in-session sketch inlined) and a short reminder of intent. The
-   runner executes the worker loop, the test-reviewer checkpoint, commits, and doc
-   updates in its own context, and returns a compact summary (changed files, test
-   status) or a blocker. On a blocker, relay it, get the user's answer, and
+   `/dev:implement`. The runner starts with no conversation history, so pass the
+   context its Input section needs: the plan directory + plan filename (or, for a
+   trivial change, the in-session sketch inlined), the task slug, the branch, the
+   project's test/lint/fmt commands (from CLAUDE.md), and a short reminder of
+   intent. The runner executes the worker loop, the test-reviewer checkpoint,
+   commits, and doc updates in its own context, and returns a compact summary
+   (changed files, test status) or a blocker. On a blocker, relay it, get the user's answer, and
    re-spawn the runner to resume from on-disk state (plan checkboxes, journal, and
    commits persist).
 2. **Review (main thread).** Once the runner reports the code complete, invoke

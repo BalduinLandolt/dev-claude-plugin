@@ -66,9 +66,12 @@ from `.claude/conventions/` files.
 ### Learning
 - **doc-improver** — triage implementation issues into documentation fixes
 
-### Worker
+### Coordinator (per-phase subagents)
 - **implement-worker** — stateless per-step executor: writes tests + code, runs
   tests, returns a ~200-word report, context discarded after each step
+- **phase-runner** — runs one non-interactive phase (`implement`, `learn`,
+  `prepare-pr`) in an isolated context on Sonnet and returns a compact summary,
+  keeping that phase's transcript off the orchestrator thread
 
 `/dev:next` orchestrates the run, keeping the interactive parts — investigation,
 planning, approvals, verification — on the main thread. The heavy non-interactive
