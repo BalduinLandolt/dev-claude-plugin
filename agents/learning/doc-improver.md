@@ -2,6 +2,7 @@
 name: doc-improver
 description: Reads the issues journal, triages each issue, and applies documentation improvements — updates existing docs, fixes discoverability, routes tangential ideas to the project backlog, or creates rare standalone learnings
 model: sonnet
+effort: low
 tools:
   - Glob
   - Grep

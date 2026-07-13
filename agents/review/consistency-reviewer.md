@@ -1,7 +1,8 @@
 ---
 name: consistency-reviewer
 description: Reviews code for alignment with project documentation, stale references, and inconsistencies between components
-model: haiku
+model: sonnet
+effort: low
 tools:
   - Glob
   - Grep

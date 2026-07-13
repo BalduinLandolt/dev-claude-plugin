@@ -2,6 +2,7 @@
 name: framework-researcher
 description: Fetches current documentation for frameworks and libraries used in the project
 model: sonnet
+effort: medium
 tools:
   - Read
   - WebFetch

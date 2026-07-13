@@ -2,6 +2,7 @@
 name: docs-reviewer
 description: Reviews whether documentation accurately reflects the code changes
 model: haiku
+effort: low
 tools:
   - Glob
   - Grep
