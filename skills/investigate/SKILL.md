@@ -50,7 +50,8 @@ beyond "project plan and backlog live in the same directory".
    - **Relevant existing code** — what the researchers found.
    - **Constraints worth knowing** — conventions, prior learnings, open spec
      questions.
-   Do not pre-judge tier or recommend a workflow mode. Sizing is a separate decision.
+   Do not pre-judge how much ceremony the task needs — the workflow shape is
+   decided in `/dev:next`'s Phase 2. Sizing is a separate decision.
 6. Wait for user approval to proceed with this item.
 
 ## Mode B: Argument given — scope a user-provided task
@@ -79,6 +80,6 @@ The argument is a task description (e.g. "add a button to clear filters",
 
 Present the proposal clearly and concisely. Do not start planning until the user agrees.
 
-The size/risk and workflow tier are decided in the **next** skill's sizing prompt
-after this investigation completes. Don't pre-judge size here — your job is to
-surface enough context that the sizing decision is informed.
+The size/risk and workflow shape are decided in the **next** skill's Phase 2
+(surface-and-veto) after this investigation completes. Don't pre-judge size here —
+your job is to surface enough context that the sizing decision is informed.
