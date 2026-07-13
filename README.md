@@ -10,11 +10,11 @@ The plugin provides a full development workflow:
 
 1. **Ideate** *(optional)* — turn a vague problem or half-formed idea into a concrete next step
 2. **Investigate** — pick from the project plan, or scope a user-provided task
-3. **Size** — choose a workflow tier (minimal, light, full) appropriate to the task
-4. **Plan** — produce planning documents matched to the tier
-5. **Review** — spawn reviewer agents in parallel, loop until clean (default in full; opt-in in light)
-6. **Implement** — execute the plan with mode-appropriate review checkpoints
-7. **Learn** — process issues into documentation improvements (light, full)
+3. **Shape** — one adaptive judgment of how much ceremony the task needs, confirmed with you (surface-and-veto)
+4. **Plan** — an implementation plan, plus a PRD when the task warrants one
+5. **Review** — fan out reviewer agents through an isolated Workflow, verify findings, loop until clean
+6. **Implement** — execute the plan, dispatching steps to workers, with review checkpoints
+7. **Learn** — process issues into documentation improvements
 
 Plus supporting skills:
 
@@ -29,9 +29,9 @@ Plus supporting skills:
 | `/dev:next [task]` | Run the workflow for the next plan item, or for a task description given as argument |
 | `/dev:ideate` | Turn a vague problem or half-formed idea into a concrete next step |
 | `/dev:investigate` | Propose the next task to work on (from plan or from argument) |
-| `/dev:plan` | Create planning documents (light: plan only; full: PRD + plan) |
-| `/dev:review-plan` | Review a plan with all discovered reviewers (full mode by default; opt-in from light mode) |
-| `/dev:implement` | Execute an approved plan with mode-appropriate review checkpoints |
+| `/dev:plan` | Create planning documents (implementation plan; PRD when warranted) |
+| `/dev:review-plan` | Review a plan with all discovered reviewers (run when the task's shape calls for it) |
+| `/dev:implement` | Execute an approved plan with review checkpoints |
 | `/dev:review-impl` | Review implementation code with all discovered reviewers |
 | `/dev:learn` | Process the issues journal into doc improvements |
 | `/dev:prepare-pr` | Clean up history, push, and create a PR |
@@ -70,12 +70,12 @@ from `.claude/conventions/` files.
 - **implement-worker** — stateless per-step executor: writes tests + code, runs
   tests, returns a ~200-word report, context discarded after each step
 
-`/dev:next` invokes downstream skills (`/dev:plan`, `/dev:review-plan`,
-`/dev:implement`, `/dev:review-impl`) via the `Skill` tool. `Skill` runs the
-called skill body in the caller's context (no subagent boundary), so the
-chain stays in the orchestrator's window. Each skill body then `Agent`-spawns
-its workers and reviewers — a single depth-1 spawn from the orchestrator,
-which is the depth Claude Code currently supports reliably.
+`/dev:next` invokes the downstream skills via the `Skill` tool, so the
+orchestration chain stays in one window. `implement` dispatches each plan step
+to a worker subagent; `review-impl` and `review-plan` run their reviewer
+fan-out through an isolated Workflow (falling back to direct agent spawns when
+the Workflow tool isn't available), so reviewer transcripts stay out of the
+orchestrator's context.
 
 ## Installation
 
