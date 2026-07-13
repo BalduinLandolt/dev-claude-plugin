@@ -17,17 +17,21 @@ optimizations* with their decision history and the token-profiling evidence.
 
 ## Open entries
 
-### Run the workflow on Sonnet 5
-
-Sonnet 5 is now capable enough to orchestrate the workflow, and it is ~5× cheaper
-per token than Opus. Since profiling put ~88% of cost on the orchestrator thread,
-model choice there is a large lever — compounding with Phase B's context
-reduction. Two facets: (a) recommend in the README/CLAUDE.md that users run
-`/dev:next` on Sonnet 5 for cost; (b) in Phase B, run the heavy phase-driver
-subagents on Sonnet 5 regardless of the top session's model (plugin-controllable
-via spawn options). Deferred — revisit alongside Phase B (see NOTES.md).
+_(none)_
 
 ## Recently dropped
+
+### Running the whole session on Sonnet 5 (dropped)
+
+Idea: drive the top `/dev:next` session on Sonnet 5 to cut the orchestrator-thread
+cost (~88% of the total). Dropped: the session model governs the in-context work,
+which includes **planning** (`plan`/`investigate` run in the orchestrator's
+context), so a Sonnet session would downgrade the stage where a frontier model is
+most wanted — and would floor the Opus `correctness`/`security` reviewers. Model
+tiering is done per-agent in frontmatter instead, independent of the session
+model: keep the session on Opus for frontier planning; implementation is already
+delegated to Sonnet (`phase-runner`, `implement-worker`). Phase B already delivers
+frontier-planning + Sonnet-implementation without changing the session model.
 
 ### Coordinator wrappers + post-hoc trace (0.11.0 revert)
 

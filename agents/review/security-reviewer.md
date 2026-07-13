@@ -1,7 +1,7 @@
 ---
 name: security-reviewer
 description: Reviews code for security issues proportionate to the project's threat model
-model: sonnet
+model: opus
 effort: high
 rerun: always
 tools:

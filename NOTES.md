@@ -31,12 +31,18 @@ Staged response:
   coding. Research fan-out was left in-context: `Agent` already isolates each
   researcher's exploration, and the reports must reach the planner regardless.
 
-## Still open
+## Model tiering is per-agent, not per-session
 
-- **Run the workflow on Sonnet 5** (see BACKLOG.md) — with ~88% of cost on the
-  orchestrator thread, driving the top session on Sonnet 5 is the largest single
-  remaining lever, compounding with the phase isolation above. The driver
-  subagents already run on Sonnet.
+Running the whole `/dev:next` session on Sonnet 5 to cut the orchestrator-thread
+cost was considered and rejected: the session model governs the *in-context*
+work, which includes planning (`plan`/`investigate` run in the orchestrator's
+context), so a Sonnet session would downgrade the planning stage — where a
+frontier model is most wanted — and would floor the Opus reviewers. Model tiering
+is done per-agent in frontmatter instead, independent of the session model: keep
+the session on Opus for frontier planning, while implementation is already
+delegated to Sonnet (`phase-runner`, `implement-worker` are `model: sonnet`) and
+`correctness`/`security` run on Opus. Phase B therefore already delivers
+frontier-planning + Sonnet-implementation without changing the session model.
 
 ## Effort & model tuning (applied 0.13.0)
 
@@ -44,8 +50,8 @@ Every reviewer, researcher, and the doc-improver carries an explicit `effort` in
 frontmatter; the review Workflow reads it and passes it per reviewer.
 correctness/security `high`; rust, the framework/topic researchers, and
 test-reviewer `medium`; the rest `low`. All run on Sonnet except `docs-reviewer`
-(Haiku). `implement-worker` inherits the session effort so its code-writing is not
-starved. Cost is controlled by thinking depth, not model weakness — hence the
+(Haiku) and `correctness`/`security` (Opus, the two highest-stakes reviewers).
+`implement-worker` inherits the session effort so its code-writing is not starved. Cost is controlled by thinking depth, not model weakness — hence the
 capability floor stays high even on the cheap reviewers.
 
 ## Ideas considered and rejected
