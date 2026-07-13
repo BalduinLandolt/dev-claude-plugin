@@ -70,12 +70,13 @@ from `.claude/conventions/` files.
 - **implement-worker** — stateless per-step executor: writes tests + code, runs
   tests, returns a ~200-word report, context discarded after each step
 
-`/dev:next` invokes the downstream skills via the `Skill` tool, so the
-orchestration chain stays in one window. `implement` dispatches each plan step
-to a worker subagent; `review-impl` and `review-plan` run their reviewer
-fan-out through an isolated Workflow (falling back to direct agent spawns when
-the Workflow tool isn't available), so reviewer transcripts stay out of the
-orchestrator's context.
+`/dev:next` orchestrates the run, keeping the interactive parts — investigation,
+planning, approvals, verification — on the main thread. The heavy non-interactive
+phases (`implement`, `learn`, `prepare-pr`) run in isolated subagents that return
+compact summaries, so their transcripts stay out of the orchestrator's context.
+Reviewer fan-out runs through an isolated Workflow (with a direct-agent fallback);
+the code-review loop itself stays on the main thread so it keeps its adversarial
+verify pass.
 
 ## Installation
 

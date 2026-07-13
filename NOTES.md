@@ -19,16 +19,24 @@ Staged response:
   in the orchestrator); review code-fixes dispatched to workers (diffs off the
   main thread); per-agent effort tuning; a 3-round review cap as a cheap
   runaway-guard.
-- **Phase B — in progress:** whole-phase isolation, the real lever. The depth-2
-  `Agent`-nesting spike passed (depth-5 is available, lifting the constraint that
-  forced the 0.11.0 revert), so the non-interactive mechanical phases now run
-  inside a `phase-runner` subagent on Sonnet — `learn` and `prepare-pr` return
-  compact summaries and escalate blockers via their return value. The interactive
-  spine (`investigate`, `plan`, all human gates) stays on the main thread. The
-  remaining and largest step is giving `implement` the same driver treatment,
-  with escalation-via-return for mid-loop blockers; that is where most of the
-  context-size win is, and it is the riskiest change (it revives the coordinator
-  topology), so it gets its own reviewed step.
+- **Phase B — done:** whole-phase isolation. The depth-2 `Agent`-nesting spike
+  passed (depth-5 is available, lifting the constraint that forced the 0.11.0
+  revert), so the non-interactive phases run inside a `phase-runner` subagent on
+  Sonnet: `learn`, `prepare-pr`, and `implement` return compact summaries and
+  escalate blockers via their return value. The interactive spine (`investigate`,
+  `plan`, all human gates) stays on the main thread. A spike also found the
+  **`Workflow` tool is unavailable to subagents**, so the `implement` code-review
+  loop (`review-impl`) runs in the orchestrator *after* the driver returns —
+  keeping the adversarial verify pass on code reviews while still isolating the
+  coding. Research fan-out was left in-context: `Agent` already isolates each
+  researcher's exploration, and the reports must reach the planner regardless.
+
+## Still open
+
+- **Run the workflow on Sonnet 5** (see BACKLOG.md) — with ~88% of cost on the
+  orchestrator thread, driving the top session on Sonnet 5 is the largest single
+  remaining lever, compounding with the phase isolation above. The driver
+  subagents already run on Sonnet.
 
 ## Effort & model tuning (applied 0.13.0)
 
