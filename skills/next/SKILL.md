@@ -68,17 +68,26 @@ load-bearing, be thorough") without re-asking. Record the confirmed shape.
   Then present the plan with a short overview and **wait for explicit approval**.
   On approval, set the plan frontmatter `status: approved`.
 
-## Phase 4: Implement + Review
+## Phase 4: Implement, then Review
 
-Invoke `/dev:implement` via the `Skill` tool. Pass the plan directory + plan
-filename (or, for a trivial change, the in-session sketch inlined as text) and a
-short reminder of the task intent. Implement runs the worker loop, the review
-checkpoints, and the `/dev:review-impl` loop, and returns when the work is done or
-it hits a blocker.
+Coding is isolated in a subagent; the code review runs here on the main thread,
+which has the Workflow tool.
 
-On a blocker, follow the escalation pattern: relay the issue, get the user's
-answer, then re-invoke `/dev:implement` to resume from on-disk state (plan
-checkboxes, journal, and commits all persist between invocations).
+1. **Implement (isolated).** Spawn `dev:coordinator:phase-runner` with **Skill**
+   `/dev:implement`. The runner starts with no conversation history, so pass the
+   context its Input section needs: the plan directory + plan filename (or, for a
+   trivial change, the in-session sketch inlined), the task slug, the branch, the
+   project's test/lint/fmt commands (from CLAUDE.md), and a short reminder of
+   intent. The runner executes the worker loop, the test-reviewer checkpoint,
+   commits, and doc updates in its own context, and returns a compact summary
+   (changed files, test status) or a blocker. On a blocker, relay it, get the user's answer, and
+   re-spawn the runner to resume from on-disk state (plan checkboxes, journal, and
+   commits persist).
+2. **Review (main thread).** Once the runner reports the code complete, invoke
+   `/dev:review-impl` via the `Skill` tool. It resolves the reviewer set, fans out
+   through the Workflow (verified findings), fixes — dispatching code fixes to
+   workers — and loops to clean. Then commit the review fixes (a `fix:` or
+   `--fixup` commit; `prepare-pr` tidies history). Do not skip review.
 
 ## Phase 5: Documentation
 
@@ -93,15 +102,20 @@ this.**
 
 ## Phase 7: Learn
 
-If a plan directory with an issues journal exists, run `/dev:learn` to process it.
-A trivial sketch-backed task has no journal — skip.
+If a plan directory with an issues journal exists, process it in an isolated
+context: spawn `dev:coordinator:phase-runner` with **Skill** `/dev:learn` and the
+task slug (plus the plan directory). Read its report; on `blocked`, resolve the
+decision with the user and re-spawn. A trivial sketch-backed task has no journal —
+skip.
 
 ## Phase 8: Complete
 
 - Set plan frontmatter `status: implemented` (if a plan document exists).
 - Check off the completed item in the project plan — only if `plan_entry` names one.
-- Deliver: run `/dev:prepare-pr` to open a PR. Deliver direct-to-main only if the
-  Phase 2 shape chose it and the repo's policy permits it.
+- Deliver: unless the Phase 2 shape chose direct-to-main (and the repo permits
+  it), spawn `dev:coordinator:phase-runner` with **Skill** `/dev:prepare-pr` to
+  clean history, push, and open the PR in an isolated context. Read its report for
+  the PR URL; on `blocked`, resolve with the user and re-spawn, then relay the URL.
 
 ## Gates
 

@@ -10,7 +10,6 @@ allowed-tools:
   - Edit
   - Bash
   - Agent
-  - AskUserQuestion
   - Skill
   - TaskCreate
   - TaskUpdate
@@ -20,8 +19,10 @@ allowed-tools:
 
 Execute the approved work. You own the loop: read the plan, dispatch per-step
 work to stateless `dev:coordinator:implement-worker` agents, manage commits at
-review-unit boundaries, and run review checkpoints. Workers write the code; you
-own the loop and the git state.
+review-unit boundaries, and run the test-reviewer checkpoint. Workers write the
+code; you own the loop and the git state. The orchestrator runs the full
+code-review loop after you return, so your job ends when the code is written,
+tests pass, the test-reviewer checkpoint is clean, and docs are updated.
 
 The one axis that changes behaviour is **whether a plan directory exists** on
 disk:
@@ -73,10 +74,11 @@ After each worker returns:
 
 1. **`complete`** → check off the step in the plan (plan-backed only). Continue.
 2. **`blocked`** → decide:
-   - a question for the user → escalate via `AskUserQuestion`, then spawn a fresh
-     worker with the answer;
    - a gap you can resolve (re-read the plan, refine the step) → resolve, respawn;
-   - a real plan problem → return `blocked` to the orchestrator.
+   - anything needing a user decision, or a real plan problem → stop and return
+     `blocked` to the orchestrator, stating the question or problem. You cannot ask
+     the user directly; the orchestrator escalates and re-invokes you to resume
+     from on-disk state.
 3. **`partial`** → treat as not done; spawn another worker to finish or split the
    step.
 
@@ -101,23 +103,20 @@ format with `**Category**: process`. Workers write overflow detail (long traces,
 big diffs) to `docs/design/plans/<task>/worker-logs/step-<id>.md`; read those only
 if you need the detail to decide — `/dev:learn` deletes the directory later.
 
-## Review checkpoints
+## Test-reviewer checkpoint
 
-Run after the worker loop completes, not interleaved.
+After the worker loop completes (not interleaved): if the loop wrote new tests,
+spawn the test reviewer once — prefer a project-local `test-reviewer` (bare name,
+from `.claude/agents/review/`) if it exists; otherwise spawn the plugin's
+`dev:test-reviewer`. Pass it the plan and the test files. Fix Critical/Warning
+findings via a worker or a small inline edit. Do not loop. Skip if no new tests.
 
-- **Test-reviewer** (when the loop wrote new tests): spawn the test reviewer once
-  — prefer a project-local `test-reviewer` (bare name, from
-  `.claude/agents/review/`) if it exists; otherwise spawn the plugin's
-  `dev:test-reviewer`. Pass it the plan and the test files. Fix Critical/Warning
-  findings via a worker or a small inline edit. Do not loop. Skip if no new tests.
-- **Final review**: invoke `/dev:review-impl` via the `Skill` tool. It resolves
-  the reviewer set, fans out (isolated), verifies findings, and loops to clean on
-  its own — it judges its own depth from the change, so pass no mode. Run
-  `/allium:weed` first if the project uses specs and the change touches a spec'd
-  area.
+Run `/allium:weed` here if the project uses behavioral specs and the change
+touches a spec'd area.
 
-Reviews run automatically — do not ask permission; review is part of
-implementation. Return only when the loop is done and reviews have converged.
+The full code-review loop (`/dev:review-impl`) runs in the orchestrator after you
+return — it uses the Workflow tool, which the orchestrator has. Don't invoke it
+here.
 
 ## Documentation
 
@@ -132,6 +131,9 @@ proportion to what changed** (see CLAUDE.md for locations):
 
 ## Completion
 
-When steps are done, reviewers are clean, and docs are updated:
+When steps are done, the test-reviewer checkpoint is clean, and docs are updated:
 - Run the project's test, lint, and format-check commands one final time.
-- Return to the orchestrator, which presents the diff for human verification.
+- Return a compact summary to the orchestrator: what was built, the changed
+  files, and the test/lint status — or a `blocked` report if you could not
+  finish. The orchestrator then runs the code-review loop and presents the diff
+  for human verification.
