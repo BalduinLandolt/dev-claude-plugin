@@ -104,8 +104,10 @@ Critical/Warning finding (killing false positives), and returns
 `{ round, reviewers, findings: [{ reviewer, findings, summary }], flagged }`.
 The findings are already verified — do not re-verify them.
 
-**If you do not have the Workflow tool** (older client, or it is disabled), use
-the fallback in the section below instead. Everything else is identical.
+**If you do not have the Workflow tool** (older client, or Dynamic Workflows
+disabled), read `../../assets/review-fallback.md` and use that spawning path for
+this step and the re-review step. Everything else in this skill is unchanged.
+When the Workflow tool *is* available, do not read that file.
 
 ### 5. Triage and fix
 
@@ -141,19 +143,3 @@ reviewer set** — the union of:
 
 Reviewers clean last round, not `rerun: always`, and not judged relevant do not
 re-run. Repeat until no Critical/Warning findings remain or the 3-round cap hits.
-
-## Fallback: no Workflow tool
-
-If the Workflow tool is unavailable, run the same loop with direct `Agent`
-spawns:
-
-1. Spawn the resolved reviewer set **in parallel** via the `Agent` tool, each
-   receiving the change summary, the changed-file list, the plan, and relevant
-   docs. Reviewers self-gate when irrelevant (e.g. `rust-reviewer` returns early
-   if no `*.rs` changed), so running the full set is cheap.
-2. Collect the standardized `## [Type] Review` output from each (Critical /
-   Warning / Suggestion). There is no automated verify pass on this path — apply
-   your own judgment when triaging, and be a little more skeptical of
-   plausible-but-thin findings.
-3. Fix (dispatch to a worker, as in step 5) and re-review the reduced set, same
-   3-round cap.

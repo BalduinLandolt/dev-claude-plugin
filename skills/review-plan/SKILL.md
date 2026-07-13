@@ -62,7 +62,10 @@ Resolve the absolute path to `assets/review-fanout.workflow.js` and invoke the
 It returns `{ round, reviewers, findings: [{ reviewer, findings, summary }],
 flagged }`, findings already verified.
 
-**If you do not have the Workflow tool**, use the fallback below.
+**If you do not have the Workflow tool**, read `../../assets/review-fallback.md`
+and use that spawning path for this step and the re-review step; everything else
+in this skill is unchanged. When the Workflow tool *is* available, do not read
+that file.
 
 ### 4. Triage and fix
 
@@ -92,11 +95,3 @@ open after that rather than looping).
 ### 6. Update status
 
 Once clean, update the plan document frontmatter: `status: reviewed`.
-
-## Fallback: no Workflow tool
-
-Run the same loop with direct `Agent` spawns: launch the resolved reviewer set in
-parallel (each receiving the plan documents and relevant docs), collect the
-standardized Critical/Warning/Suggestion output, and — since there is no
-automated verify pass on this path — be a little more skeptical when triaging.
-Fix inline and re-review the reduced set, same 3-round cap.
