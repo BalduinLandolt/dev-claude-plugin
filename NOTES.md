@@ -19,12 +19,16 @@ Staged response:
   in the orchestrator); review code-fixes dispatched to workers (diffs off the
   main thread); per-agent effort tuning; a 3-round review cap as a cheap
   runaway-guard.
-- **Phase B — pending:** whole-phase isolation, the real lever. Run the heavy,
-  non-interactive phases as subagents that return compact summaries, so their
-  transcripts never enter the Opus context; keep only the interactive spine on the
-  main thread. Also covers running `prepare-pr`/`learn` on Sonnet and isolating
-  the research fan-out. Gated on a depth-2 `Agent`-nesting spike — depth-5 nesting
-  is available now, which lifts the constraint that forced the 0.11.0 revert.
+- **Phase B — in progress:** whole-phase isolation, the real lever. The depth-2
+  `Agent`-nesting spike passed (depth-5 is available, lifting the constraint that
+  forced the 0.11.0 revert), so the non-interactive mechanical phases now run
+  inside a `phase-runner` subagent on Sonnet — `learn` and `prepare-pr` return
+  compact summaries and escalate blockers via their return value. The interactive
+  spine (`investigate`, `plan`, all human gates) stays on the main thread. The
+  remaining and largest step is giving `implement` the same driver treatment,
+  with escalation-via-return for mid-loop blockers; that is where most of the
+  context-size win is, and it is the riskiest change (it revives the coordinator
+  topology), so it gets its own reviewed step.
 
 ## Effort & model tuning (applied 0.13.0)
 

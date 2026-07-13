@@ -93,15 +93,20 @@ this.**
 
 ## Phase 7: Learn
 
-If a plan directory with an issues journal exists, run `/dev:learn` to process it.
-A trivial sketch-backed task has no journal — skip.
+If a plan directory with an issues journal exists, process it in an isolated
+context: spawn `dev:coordinator:phase-runner` with **Skill** `/dev:learn` and the
+task slug (plus the plan directory). Read its report; on `blocked`, resolve the
+decision with the user and re-spawn. A trivial sketch-backed task has no journal —
+skip.
 
 ## Phase 8: Complete
 
 - Set plan frontmatter `status: implemented` (if a plan document exists).
 - Check off the completed item in the project plan — only if `plan_entry` names one.
-- Deliver: run `/dev:prepare-pr` to open a PR. Deliver direct-to-main only if the
-  Phase 2 shape chose it and the repo's policy permits it.
+- Deliver: unless the Phase 2 shape chose direct-to-main (and the repo permits
+  it), spawn `dev:coordinator:phase-runner` with **Skill** `/dev:prepare-pr` to
+  clean history, push, and open the PR in an isolated context. Read its report for
+  the PR URL; on `blocked`, resolve with the user and re-spawn, then relay the URL.
 
 ## Gates
 
