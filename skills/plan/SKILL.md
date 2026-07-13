@@ -14,10 +14,10 @@ allowed-tools:
 
 # Plan
 
-Create planning documents for an approved task. There are no tiers — you decide
-how much planning ceremony the task actually needs, and the orchestrator has
-already surfaced-and-confirmed the heavier calls (a PRD, a plan-review pass) with
-the user before invoking you.
+Create planning documents for an approved task. You decide how much planning
+ceremony the task actually needs; the orchestrator has already
+surfaced-and-confirmed the heavier calls (a PRD, a plan-review pass) with the user
+before invoking you.
 
 ## What to produce
 
@@ -86,5 +86,4 @@ task: "<number>-<slug>"
 ---
 ```
 
-`status` moves `draft → reviewed → approved → implemented` as the task
-progresses. There is no `mode` field — the workflow is adaptive, not tiered.
+`status` moves `draft → reviewed → approved → implemented` as the task progresses.

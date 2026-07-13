@@ -25,7 +25,7 @@ orchestrator-context growth; this is the fix.
 
 ## How thorough to be
 
-Decide from the change itself — there are no tiers:
+Decide from the change itself:
 
 - **Trivial / low-risk change** (a few lines, no behavioural surface) → a single
   round is enough. Fix and stop.
@@ -59,8 +59,8 @@ Touch-points worth flagging: <new public API, schema change, dependency added,
 ### 3. Discover and resolve the reviewer set
 
 The set is the union of the plugin's reviewers and any project-local reviewers,
-with overrides. **Discover — don't hardcode** (there is no reviewer list to keep
-in sync; the agent files *are* the registry):
+with overrides. **Discover — don't hardcode**; the agent files *are* the
+registry:
 
 - **Plugin reviewers**: glob this skill's sibling directory `../../agents/review/*.md`
   (relative to this skill's own directory). Each file's frontmatter gives `name`,

@@ -23,8 +23,8 @@ work to stateless `dev:coordinator:implement-worker` agents, manage commits at
 review-unit boundaries, and run review checkpoints. Workers write the code; you
 own the loop and the git state.
 
-There are no tiers. The one axis that changes behaviour is **whether a plan
-directory exists** on disk:
+The one axis that changes behaviour is **whether a plan directory exists** on
+disk:
 
 - **Plan-backed task** (`docs/design/plans/<task>/` with a plan document) — the
   normal case. Use the plan; keep an issues journal there; check steps off.

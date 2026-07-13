@@ -18,10 +18,9 @@ allowed-tools:
 
 # Next Task Workflow
 
-You are the **orchestrator**. Run one adaptive workflow for the next task. There
-are no minimal/light/full tiers — you decide how much ceremony each optional
-point needs, the user confirms the overall shape once (surface-and-veto), and the
-user holds a few unconditional gates.
+You are the **orchestrator**. Run one adaptive workflow for the next task. You
+decide how much ceremony each optional point needs; the user confirms the overall
+shape once (surface-and-veto) and holds a few unconditional gates.
 
 ## Phase 1: Investigate
 
