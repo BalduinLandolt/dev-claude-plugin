@@ -1,7 +1,6 @@
 ---
 name: review-impl
-description: Spawn all discovered reviewer agents in parallel to review implementation code. Loops until reviewers find no issues, unless invoked in single-round mode.
-argument-hint: "[mode=<minimal|light|full>]"
+description: Fan out reviewer agents over the implementation, adversarially verify their findings, fix, and loop until clean. Runs the fan-out in an isolated Workflow so reviewer transcripts never enter the orchestrator context.
 allowed-tools:
   - Glob
   - Grep
@@ -15,25 +14,28 @@ allowed-tools:
 
 # Review Implementation
 
-Run the implementation review loop: spawn reviewers, fix or escalate, repeat until clean.
+Run the implementation review loop: fan out reviewers → verify findings → fix → repeat until clean.
 
-## Argument: mode
+The fan-out heavy lifting lives in a shared Workflow script
+(`assets/review-fanout.workflow.js`, at the plugin root — two levels up from this
+skill). Running it there keeps N reviewer transcripts *plus* the verification
+sub-agents in isolated contexts, so only compact, already-verified findings
+return to the orchestrator. Reviewer output was measured as a top driver of
+orchestrator-context growth; this is the fix.
 
-If the orchestrator passes `mode=minimal` (or `single-round=true`), run **round 1 only**
-and stop after fixes — do not loop. This is appropriate for trivial changes where the
-risk of a regression hidden behind a fix is low.
+## How thorough to be
 
-For `mode=light`, `mode=full`, or no mode argument: run the full loop semantics
-described below (round 1 spawns all discovered reviewers; round 2+ uses the reduced
-set; repeat until no Critical or Warning findings remain).
+Decide from the change itself — there are no tiers:
 
-The default is loop semantics. Treat single-round as an explicit opt-in.
+- **Trivial / low-risk change** (a few lines, no behavioural surface) → a single
+  round is enough. Fix and stop.
+- **Substantial change** → loop until clean, **capped at 3 rounds**. If findings
+  remain after round 3, surface them to the user rather than looping forever —
+  a finding that survives three fix attempts usually needs a human decision.
 
 ## Steps
 
-### 1. Identify Changed Files
-
-Determine what files have been created or modified since the branch diverged from main:
+### 1. Identify changed files
 
 ```bash
 git diff --name-only main...HEAD
@@ -41,128 +43,117 @@ git diff --name-only main...HEAD
 
 The three-dot syntax compares against the merge base, not the current tip of main.
 
-### 2. Write a Change Summary
+### 2. Write a change summary
 
-Before spawning reviewers, produce a short orientation summary of what this branch
-changed. Aim for 5-10 lines, no more. Format:
+A 5–10 line orientation block passed to every reviewer, so none of them
+reconstructs it from scratch:
 
 ```
-Intent: <one sentence describing the task / what the branch accomplishes>
+Intent: <one sentence — what the branch accomplishes>
 Notable changes:
 - <file or area>: <what changed and why, one line>
-- ...
 Touch-points worth flagging: <new public API, schema change, dependency added,
-   migration, behavior change visible to users, etc. — or "none">
+   migration, user-visible behaviour change — or "none">
 ```
 
-Each reviewer receives this summary and the file list, so it can orient itself
-immediately without re-reading every changed file. Reviewers still read files when
-they need surrounding context — the summary is orientation, not a substitute for
-the source.
+### 3. Discover and resolve the reviewer set
 
-Producing the summary once and passing it to N reviewers is cheaper than each
-reviewer reconstructing the same understanding from scratch.
+The set is the union of the plugin's reviewers and any project-local reviewers,
+with overrides. **Discover — don't hardcode** (there is no reviewer list to keep
+in sync; the agent files *are* the registry):
 
-### 3. Discover and Spawn Reviewers
+- **Plugin reviewers**: glob this skill's sibling directory `../../agents/review/*.md`
+  (relative to this skill's own directory). Each file's frontmatter gives `name`,
+  `effort`, and optional `rerun`. Spawn each by the namespaced `agentType`
+  `dev:review:<name>` (e.g. `dev:review:correctness-reviewer`).
+- **Project-local reviewers**: glob `.claude/agents/review/*.md` in the consuming
+  project. Spawn each by its bare `name`. Read frontmatter for `effort`/`rerun`.
 
-The reviewer set is the union of the plugin's built-in reviewers and any project-local
-reviewers, with overrides.
+**Resolution rules** (in order):
+1. **Same-name override** — a local reviewer whose `name` matches a plugin
+   reviewer replaces it; only the local one runs.
+2. **Additive otherwise** — differently-named locals run in addition.
+3. **CLAUDE.md disables** — if the project's `CLAUDE.md` has a `## Disabled
+   reviewers` section listing names, drop those from the set.
 
-**Plugin reviewers** (default set, spawn by namespaced name):
+Build the resolved list: `[{ name, agentType, effort, rerun }]`. State it in one
+line before spawning, e.g. "9 reviewers: 9 plugin, 0 local, 0 disabled."
 
-- `dev:review:architecture-reviewer`
-- `dev:review:consistency-reviewer`
-- `dev:review:correctness-reviewer` *(rerun: always)*
-- `dev:review:docs-reviewer`
-- `dev:review:frontend-reviewer`
-- `dev:review:rust-reviewer`
-- `dev:review:security-reviewer` *(rerun: always)*
-- `dev:review:simplicity-reviewer`
-- `dev:review:spec-compliance-reviewer` *(rerun: always)*
+If the resolved set is empty (should not happen on a normal install), warn the
+user with the cause and skip the loop.
 
-**Project-local reviewers**: glob `.claude/agents/review/*.md`. Each file defines a
-reviewer agent spawned by its bare name (e.g., `architecture-reviewer`). Read each
-local file's frontmatter to pick up `rerun: always`.
+### 4. Round 1 — fan out via the Workflow
 
-**Resolution rules** (apply in order):
+Resolve the absolute path to `assets/review-fanout.workflow.js` (two levels up
+from this skill's directory) and invoke the **Workflow** tool with it as
+`scriptPath`, passing `args` as a JSON object:
 
-1. **Same-name override**: if a project-local reviewer's name matches a plugin
-   reviewer's bare name (e.g., the project ships `architecture-reviewer.md`), the
-   local version replaces the plugin one. Only the local version runs.
-2. **Additive otherwise**: project-local reviewers whose names don't match any plugin
-   reviewer run *in addition to* the plugin set.
-3. **CLAUDE.md disables**: if the consuming project's `CLAUDE.md` has a section
-   `## Disabled reviewers` listing reviewer names (one per line, bullets or plain),
-   drop those from the final set entirely. This lets a project skip a plugin reviewer
-   without replacing it (e.g., projects with an external security gate may disable
-   `security-reviewer`).
+```
+{
+  target: "impl",
+  round: 1,
+  changeSummary: "<the block from step 2>",
+  files: [<changed file paths>],
+  contextDocs: [<relevant docs/design and docs/process paths, per CLAUDE.md>],
+  reviewers: [<the resolved list from step 3>]
+}
+```
 
-Launch the resolved reviewer set **in parallel**, each reviewing the changed files.
+The script runs every reviewer in parallel, adversarially refutes each
+Critical/Warning finding (killing false positives), and returns
+`{ round, reviewers, findings: [{ reviewer, findings, summary }], flagged }`.
+The findings are already verified — do not re-verify them.
 
-State the resolved set in a one-line note before spawning, e.g. "Spawning 9 reviewers:
-8 plugin + 1 local (`domain-reviewer`); 0 disabled." This makes the count visible.
+**If you do not have the Workflow tool** (older client, or it is disabled), use
+the fallback in the section below instead. Everything else is identical.
 
-Reviewers self-gate when irrelevant to the change (e.g., `rust-reviewer` returns early
-if no `*.rs` files changed), so running the full plugin set on every review is cheap.
+### 5. Triage and fix
 
-If the resolved set is empty (no plugin reviewers reachable AND no local reviewers —
-should not happen in a normal install), warn the user with the cause and skip the
-loop.
+Triage the returned findings: **Critical** (must fix), **Warning** (should fix),
+**Suggestion** (consider).
 
-Each agent receives:
-- The change summary from step 2
-- The list of changed files
-- The approved plan (for correctness and spec-compliance checking)
-- Relevant process and design docs (see CLAUDE.md documentation index)
+**Dispatch code fixes to a `dev:coordinator:implement-worker`** rather than
+editing on the main thread. Pass the worker the findings to address, the files,
+the test command, and the conventions. Keeping the edits and diffs inside the
+worker keeps them out of the orchestrator context — the profiled reason the main
+thread is expensive. Make a fix inline only when dispatching would obviously cost
+more than it saves (a one-line doc typo). Re-run the project's tests after fixes
+land (the worker does this and reports).
 
-### 4. Collect and Triage Findings
+Escalate to the user **only** for a genuine product decision the plan and docs
+can't resolve. Do not escalate by default.
 
-Same as review-plan:
-- **Critical**: must fix
-- **Warning**: should fix
-- **Suggestion**: consider
+Log any process friction to the issues journal (`**Category**: process`) — a
+reviewer that ran without its convention file, a recurring finding pattern that
+suggests a doc gap. If running standalone (no journal), surface it under "Side
+notes" instead.
 
-### 5. Fix
+### 6. Re-review
 
-Fix findings yourself. You should be able to resolve the vast majority of issues based on
-the approved plan and the project's documented constraints. Only escalate to the user when
-you genuinely cannot determine the right course of action — for example, when a finding
-reveals a gap in the plan that requires a product decision.
+Skip if this was a single-round (trivial) change or nothing was flagged.
 
-**Do not escalate as a default.** Read the plan, read the docs, think about the intent,
-and make a judgment call. The user should only see questions that truly require their input.
+Otherwise invoke the Workflow again with `round` incremented and a **reduced
+reviewer set** — the union of:
+- **always-rerun** reviewers (`rerun: always` in frontmatter — for the plugin set
+  that's `correctness-reviewer`, `security-reviewer`, `spec-compliance-reviewer`),
+- reviewers in the returned `flagged` list, and
+- any reviewer you judge newly relevant given the fixes you applied.
 
-Log fixes to the issues journal. Also log **process friction** observed
-during review: a reviewer that ran without its convention file (which would
-have made findings sharper), a reviewer set that needed a name override the
-project should formalise, a recurring finding pattern that suggests a doc
-gap. Use `**Category**: process`. If running standalone (no journal exists),
-surface these under "Side notes" in the summary instead.
+Reviewers clean last round, not `rerun: always`, and not judged relevant do not
+re-run. Repeat until no Critical/Warning findings remain or the 3-round cap hits.
 
-### 6. Re-Review
+## Fallback: no Workflow tool
 
-**Skip this step entirely in single-round mode** (`mode=minimal`). Round 1 + fixes is
-the whole review. Stop here.
+If the Workflow tool is unavailable, run the same loop with direct `Agent`
+spawns:
 
-For other modes:
-
-After fixing, spawn a **reduced reviewer set** for round 2+. The set is the union of:
-
-- **Always-rerun reviewers**: any reviewer marked `rerun: always`. For plugin
-  reviewers, the always-rerun set is `correctness-reviewer`, `security-reviewer`,
-  `spec-compliance-reviewer` (spawned by their namespaced names) — the high-blast-radius
-  ones where a fix can introduce a regression in a non-obvious way. For project-local
-  reviewers, read each file's frontmatter to determine this.
-- **Reviewers that flagged**: any reviewer that produced a Critical or Warning finding
-  in the previous round.
-- **Orchestrator-judged reviewers**: any reviewer that you, as the orchestrator, judge
-  may now be relevant given the fixes you applied. For example: if you restructured a
-  module while addressing a correctness finding, include `architecture-reviewer` even
-  if it was clean last round. If you changed user-facing copy, include `docs-reviewer`.
-  Use judgment — don't over-include, but don't blindly trust the static rule when your
-  fix obviously crossed concerns.
-
-Reviewers that were clean in the previous round, are not `rerun: always`, and aren't
-flagged by your judgment do **not** re-run. They're considered done for this loop.
-
-Repeat until no critical or warning findings remain among the reviewers that ran.
+1. Spawn the resolved reviewer set **in parallel** via the `Agent` tool, each
+   receiving the change summary, the changed-file list, the plan, and relevant
+   docs. Reviewers self-gate when irrelevant (e.g. `rust-reviewer` returns early
+   if no `*.rs` changed), so running the full set is cheap.
+2. Collect the standardized `## [Type] Review` output from each (Critical /
+   Warning / Suggestion). There is no automated verify pass on this path — apply
+   your own judgment when triaging, and be a little more skeptical of
+   plausible-but-thin findings.
+3. Fix (dispatch to a worker, as in step 5) and re-review the reduced set, same
+   3-round cap.
