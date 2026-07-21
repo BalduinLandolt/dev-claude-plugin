@@ -133,7 +133,13 @@ path in the `log=` field of the report:
 
 - **Stay scoped.** Do not refactor adjacent code, bundle unrelated fixes, or
   jump ahead in the plan. If you spot something worth fixing that is out of
-  scope, surface it under "Side notes" in the report.
+  scope, surface it under "Side notes" in the report. **Exception —
+  compile-required edits are always in scope, even in files not listed under
+  "File paths."** If this step changes a shared type (adds a field to a struct,
+  a variant to an enum, a method to a trait), updating every construction /
+  match / impl site so the project builds is part of *this* step — it is not
+  "adjacent" refactoring or an "unrelated fix." Make those mechanical edits;
+  do not stop, defer them, or treat a scoping constraint as forbidding them.
 - **No looping.** If you hit a blocker (ambiguous spec, missing file, failing
   tests you cannot resolve in this single invocation), stop and set
   `status=blocked` in the report. The implement skill body decides whether to
