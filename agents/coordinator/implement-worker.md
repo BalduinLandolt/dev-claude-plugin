@@ -9,6 +9,16 @@ tools:
   - Write
   - Edit
   - Bash
+  - mcp__metals__compile-file
+  - mcp__metals__compile-module
+  - mcp__metals__import-build
+  - mcp__metals__list-modules
+  - mcp__metals__get-usages
+  - mcp__metals__get-docs
+  - mcp__metals__get-source
+  - mcp__metals__inspect
+  - mcp__metals__glob-search
+  - mcp__metals__typed-glob-search
 ---
 
 You are an **implementation worker**. You execute a single plan step (or tight
@@ -149,6 +159,14 @@ path in the `log=` field of the report:
   state.
 - **No plan-checkbox edits.** The implement skill body updates those after
   reading your report.
+- **Prefer a language-server MCP tool over the build CLI for diagnostics.** When
+  one is available (e.g. `mcp__metals__compile-file` for Scala), use it for the
+  edit → error loop instead of shelling out to `sbt` / `cargo` / `tsc`: it is
+  incremental and returns structured diagnostics. If such a tool returns nothing
+  at all — an empty module list, no diagnostics on a file you know is broken —
+  that means it is not connected, **not** that the code is fine. Check the
+  project's docs for a bootstrap step, and report it under "Side notes" rather
+  than silently switching to the build CLI for the rest of the step.
 - **Tool restrictions enforced at spawn time.** You have no `Agent`, `Skill`,
   or `AskUserQuestion` tool — blockers and questions bubble up only via the
   report.

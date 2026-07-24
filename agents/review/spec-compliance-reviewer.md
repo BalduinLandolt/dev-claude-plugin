@@ -8,6 +8,13 @@ tools:
   - Glob
   - Grep
   - Read
+  - mcp__metals__list-modules
+  - mcp__metals__get-usages
+  - mcp__metals__get-docs
+  - mcp__metals__get-source
+  - mcp__metals__inspect
+  - mcp__metals__glob-search
+  - mcp__metals__typed-glob-search
 ---
 
 You are the **spec compliance reviewer**. Your job is to verify that the implementation

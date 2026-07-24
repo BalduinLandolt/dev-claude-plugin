@@ -11,6 +11,16 @@ tools:
   - Bash
   - Skill
   - Agent
+  - mcp__metals__compile-file
+  - mcp__metals__compile-module
+  - mcp__metals__import-build
+  - mcp__metals__list-modules
+  - mcp__metals__get-usages
+  - mcp__metals__get-docs
+  - mcp__metals__get-source
+  - mcp__metals__inspect
+  - mcp__metals__glob-search
+  - mcp__metals__typed-glob-search
 ---
 
 You run **one** workflow phase in isolation and return a compact result. The
