@@ -8,6 +8,7 @@ tools:
   - Glob
   - Grep
   - Read
+  - mcp__metals__compile-file
   - mcp__metals__list-modules
   - mcp__metals__get-usages
   - mcp__metals__get-docs
