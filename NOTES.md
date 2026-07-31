@@ -14,22 +14,33 @@ only ~12%; reviewers alone ~5%.
 
 Staged response:
 
-- **Phase A — done (0.13.0):** reviewer fan-out isolated in a Workflow (only
-  compact, verified findings return, so reviewer transcripts no longer accumulate
-  in the orchestrator); review code-fixes dispatched to workers (diffs off the
-  main thread); per-agent effort tuning; a 3-round review cap as a cheap
-  runaway-guard.
+- **Phase A — done (0.13.0), review fan-out later re-architected (0.15.0):**
+  originally the reviewer fan-out was isolated in a Workflow script (only compact,
+  verified findings return); review code-fixes dispatched to workers; per-agent
+  effort tuning; a 3-round review cap. The Workflow was **removed in 0.15.0** (see
+  Phase C) — it was excessive and opaque — but the effort tuning, the worker-
+  dispatched fixes, and the 3-round cap all survive.
 - **Phase B — done:** whole-phase isolation. The depth-2 `Agent`-nesting spike
   passed (depth-5 is available, lifting the constraint that forced the 0.11.0
   revert), so the non-interactive phases run inside a `phase-runner` subagent on
-  Sonnet: `learn`, `prepare-pr`, and `implement` return compact summaries and
-  escalate blockers via their return value. The interactive spine (`investigate`,
-  `plan`, all human gates) stays on the main thread. A spike also found the
-  **`Workflow` tool is unavailable to subagents**, so the `implement` code-review
-  loop (`review-impl`) runs in the orchestrator *after* the driver returns —
-  keeping the adversarial verify pass on code reviews while still isolating the
-  coding. Research fan-out was left in-context: `Agent` already isolates each
-  researcher's exploration, and the reports must reach the planner regardless.
+  Sonnet: `learn`, `prepare-pr`, `implement`, and (since 0.15.0) `review-impl`
+  return compact summaries and escalate blockers via their return value. The
+  interactive spine (`investigate`, `plan`, all human gates) stays on the main
+  thread. Research fan-out was moved out of `investigate` into `plan` (0.15.0) so
+  it runs only after task+shape confirmation; `Agent` already isolates each
+  researcher's exploration, and the reports reach the planner in `plan`'s context.
+- **Phase C — done (0.15.0):** the review Workflow was replaced by skill-owned
+  fan-out. `review-impl`/`review-plan` now discover reviewers, **relevance-gate**
+  the set (core always-on + `rerun: always`; the rest gated on diff/plan
+  evidence), fan out with plain `Agent` spawns, **dedup findings across
+  reviewers**, and spawn **one** `finding-verifier` subagent per unique
+  Critical/Warning finding. This killed a real blow-up: ungated 9-reviewer runs
+  where each finding (incl. cross-reviewer duplicates) got its own verifier
+  reached ~40 agents on small changes. Because the skill owns its fan-out with
+  plain spawns (no main-thread-only `Workflow` tool), `review-impl` moved into its
+  own `phase-runner` phase, run back-to-back with `implement`. Also added
+  `/dev:continue` — a resume entry point that re-enters the workflow mid-stream
+  from on-disk state instead of restarting at investigate.
 
 ## Model tiering is per-agent, not per-session
 
@@ -47,7 +58,7 @@ frontier-planning + Sonnet-implementation without changing the session model.
 ## Effort & model tuning (applied 0.13.0)
 
 Every reviewer, researcher, and the doc-improver carries an explicit `effort` in
-frontmatter; the review Workflow reads it and passes it per reviewer.
+frontmatter; the review skill reads it and passes it per reviewer at spawn.
 correctness/security `high`; rust, the framework/topic researchers, and
 test-reviewer `medium`; the rest `low`. All run on Sonnet except `docs-reviewer`
 (Haiku) and `correctness`/`security` (Opus, the two highest-stakes reviewers).
@@ -56,10 +67,13 @@ capability floor stays high even on the cheap reviewers.
 
 ## Ideas considered and rejected
 
-- **Skill-side file-type gating before spawning reviewers.** Would hard-code
-  reviewer names into the review skills (e.g. "spawn rust-reviewer only if `*.rs`
-  changed"), breaking the dynamic-discovery design. The reviewer-side self-skip
-  gates cover most of the win without the coupling.
+- **Hard-coded name→glob reviewer gating.** Rejected: wiring reviewer *names* into
+  the skills (e.g. "spawn rust-reviewer only if `*.rs` changed") would break the
+  dynamic-discovery design. **What shipped instead (0.15.0):** relevance-gating as
+  a *prose judgment* — the skill reads each discovered reviewer's declared domain
+  and keeps it only if the change touches that domain, with a fixed always-on core
+  (correctness, consistency, simplicity) + `rerun: always`. Same cost win, no name
+  coupling, dynamic discovery intact.
 - **Merging overlapping reviewers.** Considered folding the 9 into ~6
   (correctness+spec-compliance, consistency+docs, architecture+simplicity).
   Rejected: the overlaps are shallower than they look — consistency is

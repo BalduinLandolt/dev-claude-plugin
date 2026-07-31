@@ -12,12 +12,14 @@ The plugin provides a full development workflow:
 2. **Investigate** — pick from the project plan, or scope a user-provided task
 3. **Shape** — one adaptive judgment of how much ceremony the task needs, confirmed with you (surface-and-veto)
 4. **Plan** — an implementation plan, plus a PRD when the task warrants one
-5. **Review** — fan out reviewer agents through an isolated Workflow, verify findings, loop until clean
-6. **Implement** — execute the plan, dispatching steps to workers, with review checkpoints
-7. **Learn** — process issues into documentation improvements
+5. **Plan review** — relevance-gate + fan out reviewer agents over the plan, dedup and verify findings, loop until clean
+6. **Implement** — execute the plan, dispatching steps to workers
+7. **Code review** — the same gated fan-out over the implementation, run as its own isolated phase
+8. **Learn** — process issues into documentation improvements
 
 Plus supporting skills:
 
+- **continue** — resume an in-progress task mid-workflow in a fresh session (instead of restarting at investigate)
 - **greenfield** — set up a new project from scratch with standard conventions
 - **audit** — check an existing project for harness readiness, scaffold gaps
 - **prepare-pr** — clean up git history and create a pull request
@@ -27,6 +29,7 @@ Plus supporting skills:
 | Skill | Purpose |
 |---|---|
 | `/dev:next [task]` | Run the workflow for the next plan item, or for a task description given as argument |
+| `/dev:continue [task]` | Resume an in-progress task mid-workflow — detect the resume point and pick up where a prior session left off |
 | `/dev:ideate` | Turn a vague problem or half-formed idea into a concrete next step |
 | `/dev:investigate` | Propose the next task to work on (from plan or from argument) |
 | `/dev:plan` | Create planning documents (implementation plan; PRD when warranted) |
@@ -69,17 +72,22 @@ from `.claude/conventions/` files.
 ### Coordinator (per-phase subagents)
 - **implement-worker** — stateless per-step executor: writes tests + code, runs
   tests, returns a ~200-word report, context discarded after each step
-- **phase-runner** — runs one non-interactive phase (`implement`, `learn`,
-  `prepare-pr`) in an isolated context on Sonnet and returns a compact summary,
-  keeping that phase's transcript off the orchestrator thread
+- **finding-verifier** — read-only; adversarially refutes a single review finding
+  against the actual code/plan and returns a compact verdict (one per Critical/
+  Warning finding, after dedup)
+- **phase-runner** — runs one non-interactive phase (`implement`, `review-impl`,
+  `learn`, `prepare-pr`) in an isolated context on Sonnet and returns a compact
+  summary, keeping that phase's transcript off the orchestrator thread
 
 `/dev:next` orchestrates the run, keeping the interactive parts — investigation,
 planning, approvals, verification — on the main thread. The heavy non-interactive
-phases (`implement`, `learn`, `prepare-pr`) run in isolated subagents that return
-compact summaries, so their transcripts stay out of the orchestrator's context.
-Reviewer fan-out runs through an isolated Workflow (with a direct-agent fallback);
-the code-review loop itself stays on the main thread so it keeps its adversarial
-verify pass.
+phases (`implement`, `review-impl`, `learn`, `prepare-pr`) run in isolated
+subagents that return compact summaries, so their transcripts stay out of the
+orchestrator's context. Each review skill relevance-gates its reviewer set, fans
+out with plain agent spawns, dedups findings across reviewers, and verifies each
+unique Critical/Warning finding once — so a small change no longer spawns dozens
+of agents. `/dev:continue` is a second entry point that resumes an in-progress
+task mid-workflow instead of starting over.
 
 ## Installation
 

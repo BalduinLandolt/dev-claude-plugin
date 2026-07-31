@@ -6,13 +6,22 @@ allowed-tools:
   - Glob
   - Grep
   - Read
-  - Agent
   - AskUserQuestion
 ---
 
 # Investigate
 
-Gather context and propose a task. Two modes depending on whether an argument is given.
+Gather **just enough** context to propose and size a task. Two modes depending on
+whether an argument is given.
+
+## Depth: light scan only
+
+Do your own lookups with `Glob`/`Grep`/`Read` — enough to name the relevant code,
+spot obvious constraints, and let `/dev:next` size the task. **Do not spawn
+research subagents here.** The deep parallel research belongs in `/dev:plan`,
+which runs *after* the task and its shape are confirmed — running it now would
+spend research on a task that might change or turn out trivial (a trivial task
+skips `/dev:plan` entirely). A targeted scan is all the sizing decision needs.
 
 ## Backlog check (both modes, run first)
 
@@ -40,14 +49,15 @@ beyond "project plan and backlog live in the same directory".
 1. Read the project plan (see CLAUDE.md for location). Find the next unchecked item
    and its dependencies.
 2. Verify dependencies are met (previous items checked off, no blockers).
-3. Spawn **codebase-researcher** and **docs-and-learnings-researcher** in parallel to
-   understand the current state.
-4. If the project uses behavioral specs (check CLAUDE.md), review them for open
+3. Do a **light scan** of the current state yourself (`Glob`/`Grep`/`Read`): the
+   files the candidate item touches, obvious existing patterns nearby. No research
+   subagents — see "Depth" above.
+4. If the project uses behavioral specs (check CLAUDE.md), skim them for open
    questions or aspirational rules relevant to the candidate task.
 5. **Surface context** for the sizing decision (which `/dev:next` makes next, not
    here). Present:
    - **The candidate item** — which plan entry, with the dependency-readiness check.
-   - **Relevant existing code** — what the researchers found.
+   - **Relevant existing code** — what your scan found.
    - **Constraints worth knowing** — conventions, prior learnings, open spec
      questions.
    Do not pre-judge how much ceremony the task needs — the workflow shape is
@@ -59,10 +69,11 @@ beyond "project plan and backlog live in the same directory".
 The argument is a task description (e.g. "add a button to clear filters",
 "refactor the auth module", "fix the off-by-one in pagination").
 
-1. Spawn **codebase-researcher** with the task description as input. It will find
-   related code and existing patterns.
-2. Spawn **docs-and-learnings-researcher** in parallel to find relevant constraints,
-   conventions, or past learnings.
+1. **Light scan** yourself (`Glob`/`Grep`/`Read`): find the related code and
+   existing patterns the task touches — enough to restate it accurately and size
+   it. No research subagents — see "Depth" above.
+2. Skim relevant constraints, conventions, or past learnings you come across while
+   scanning.
 3. Read the project plan briefly to check whether the task overlaps with planned
    work — if so, flag the overlap to the user.
 4. Make a judgment call about whether this task should be added to the project plan:
@@ -72,7 +83,7 @@ The argument is a task description (e.g. "add a button to clear filters",
    - **Borderline cases** → ask the user.
 5. Propose to the user:
    - **The task as you understand it** — restate in one sentence.
-   - **What's relevant** — files, patterns, constraints found by research.
+   - **What's relevant** — files, patterns, constraints found by your scan.
    - **Plan-entry recommendation** — add to plan, or treat as ad-hoc, with reasoning.
 6. Wait for user approval (and confirmation of the plan-entry decision).
 

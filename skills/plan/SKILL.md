@@ -32,8 +32,10 @@ make the call yourself and note it. When in genuine doubt, ask once.
 
 ## Phase 1: Research
 
-Spawn research agents **in parallel**, but only the ones that will actually
-contribute — don't reflexively spawn all four:
+This is where the deep research happens — `investigate` deliberately did only a
+light scan, leaving the parallel fan-out for here, now that the task and its shape
+are confirmed. Spawn research agents **in parallel**, but only the ones that will
+actually contribute — don't reflexively spawn all four:
 
 - **codebase-researcher** — current code state. Almost always useful.
 - **docs-and-learnings-researcher** — constraints and past learnings. Almost
@@ -44,7 +46,8 @@ contribute — don't reflexively spawn all four:
   answering.
 
 Each returns a compact report; the subagent's exploration stays in its own
-context, so only the report reaches you.
+context, so only the report reaches you. If `investigate`'s light scan already
+answered something, don't re-ask it — spawn the agent only for what's still open.
 
 ## Phase 2: Draft
 
