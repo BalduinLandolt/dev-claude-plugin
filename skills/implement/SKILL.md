@@ -20,8 +20,8 @@ allowed-tools:
 Execute the approved work. You own the loop: read the plan, dispatch per-step
 work to stateless `dev:coordinator:implement-worker` agents, manage commits at
 review-unit boundaries, and run the test-reviewer checkpoint. Workers write the
-code; you own the loop and the git state. The orchestrator runs the full
-code-review loop after you return, so your job ends when the code is written,
+code; you own the loop and the git state. The full code-review loop runs as its
+own isolated phase after you return, so your job ends when the code is written,
 tests pass, the test-reviewer checkpoint is clean, and docs are updated.
 
 The one axis that changes behaviour is **whether a plan directory exists** on
@@ -114,9 +114,9 @@ findings via a worker or a small inline edit. Do not loop. Skip if no new tests.
 Run `/allium:weed` here if the project uses behavioral specs and the change
 touches a spec'd area.
 
-The full code-review loop (`/dev:review-impl`) runs in the orchestrator after you
-return — it uses the Workflow tool, which the orchestrator has. Don't invoke it
-here.
+The full code-review loop (`/dev:review-impl`) runs as its own isolated phase
+after you return — the orchestrator spawns a separate phase-runner for it. Don't
+invoke it here.
 
 ## Documentation
 

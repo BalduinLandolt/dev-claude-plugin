@@ -68,39 +68,45 @@ load-bearing, be thorough") without re-asking. Record the confirmed shape.
   Then present the plan with a short overview and **wait for explicit approval**.
   On approval, set the plan frontmatter `status: approved`.
 
-## Phase 4: Implement, then Review
+## Phase 4: Implement (isolated)
 
-Coding is isolated in a subagent; the code review runs here on the main thread,
-which has the Workflow tool.
+Spawn `dev:coordinator:phase-runner` with **Skill** `/dev:implement`. The runner
+starts with no conversation history, so pass the context its Input section needs:
+the plan directory + plan filename (or, for a trivial change, the in-session
+sketch inlined), the task slug, the branch, the project's test/lint/fmt commands
+(from CLAUDE.md), and a short reminder of intent. The runner executes the worker
+loop, the test-reviewer checkpoint, commits, and doc updates in its own context,
+and returns a compact summary (changed files, test status) or a blocker. On a
+blocker, relay it, get the user's answer, and re-spawn the runner to resume from
+on-disk state (plan checkboxes, journal, and commits persist).
 
-1. **Implement (isolated).** Spawn `dev:coordinator:phase-runner` with **Skill**
-   `/dev:implement`. The runner starts with no conversation history, so pass the
-   context its Input section needs: the plan directory + plan filename (or, for a
-   trivial change, the in-session sketch inlined), the task slug, the branch, the
-   project's test/lint/fmt commands (from CLAUDE.md), and a short reminder of
-   intent. The runner executes the worker loop, the test-reviewer checkpoint,
-   commits, and doc updates in its own context, and returns a compact summary
-   (changed files, test status) or a blocker. On a blocker, relay it, get the user's answer, and
-   re-spawn the runner to resume from on-disk state (plan checkboxes, journal, and
-   commits persist).
-2. **Review (main thread).** Once the runner reports the code complete, invoke
-   `/dev:review-impl` via the `Skill` tool. It resolves the reviewer set, fans out
-   through the Workflow (verified findings), fixes — dispatching code fixes to
-   workers — and loops to clean. Then commit the review fixes (a `fix:` or
-   `--fixup` commit; `prepare-pr` tidies history). Do not skip review.
+## Phase 5: Review (isolated)
 
-## Phase 5: Documentation
+Once implement reports the code complete, run the code review as its **own
+isolated phase** — spawn `dev:coordinator:phase-runner` with **Skill**
+`/dev:review-impl`. Pass it the branch, the task slug, the plan directory (if
+any), and the project's test/lint/fmt commands. The runner drives the whole review
+loop in its own context — discover + relevance-gate reviewers, fan out, dedup and
+verify findings, dispatch fixes to workers, commit the fixes, and loop to clean —
+returning only a compact report (findings fixed, anything still open). On a
+blocker (a genuine product decision), relay it, get the user's answer, and
+re-spawn to resume. Do not skip review.
+
+(No Workflow tool is involved any more — `review-impl` owns its fan-out directly,
+which is why it can run inside a phase-runner instead of on the main thread.)
+
+## Phase 6: Documentation
 
 Handled inside implement — developer docs and the user guide, updated in
 proportion to what the change actually touched.
 
-## Phase 6: Human verification (unconditional)
+## Phase 7: Human verification (unconditional)
 
 Ask the user to review the code changes and any doc updates, manually test the app
 if applicable, and confirm the implementation is acceptable. **Never auto-skip
 this.**
 
-## Phase 7: Learn
+## Phase 8: Learn
 
 If a plan directory with an issues journal exists, process it in an isolated
 context: spawn `dev:coordinator:phase-runner` with **Skill** `/dev:learn` and the
@@ -108,7 +114,7 @@ task slug (plus the plan directory). Read its report; on `blocked`, resolve the
 decision with the user and re-spawn. A trivial sketch-backed task has no journal —
 skip.
 
-## Phase 8: Complete
+## Phase 9: Complete
 
 - Set plan frontmatter `status: implemented` (if a plan document exists).
 - Check off the completed item in the project plan — only if `plan_entry` names one.
@@ -122,5 +128,5 @@ skip.
 The unconditional human checkpoints are: **task confirmation** (Phase 1), the
 **shape veto** (Phase 2), **plan approval** (Phase 3, except the trivial
 built-in-plan-mode path where ExitPlanMode is the approval), and **verification**
-(Phase 6). Everything else is your judgment. If you are genuinely unsure about a
+(Phase 7). Everything else is your judgment. If you are genuinely unsure about a
 decision, ask rather than guess.
