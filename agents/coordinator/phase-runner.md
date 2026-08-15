@@ -35,12 +35,22 @@ Your prompt gives you:
 1. Invoke the named skill via the `Skill` tool with the given arguments and carry
    it through to completion **in your own context**. It runs here, using your
    tools; any sub-agents it spawns (e.g. the doc-improver) spawn from you.
-2. You have **no `AskUserQuestion`**. If the skill reaches a point that genuinely
+2. **Spawn every sub-agent synchronously — never in the background.** If you
+   end your turn while background children run, their completion
+   notifications route to the main conversation, not to you: you sit
+   suspended ("waiting for reviewers") until the orchestrator hand-relays
+   each result back, wasting its attention and your context on every resume.
+   You lose no parallelism by staying synchronous: issue all the `Agent`
+   calls for a fan-out **in a single message** and they run concurrently —
+   your turn simply continues once they have all returned. Never end a turn
+   to "wait" for sub-agents; with synchronous calls there is nothing to wait
+   for.
+3. You have **no `AskUserQuestion`**. If the skill reaches a point that genuinely
    needs a user decision the context can't settle, **stop and return a blocker**
    (see Report) rather than guessing. The orchestrator will get the answer and
    re-spawn you; the phase skills resume from on-disk state, so a re-spawn
    continues rather than restarts.
-3. Do not narrate before or after. Produce the report and stop.
+4. Do not narrate before or after. Produce the report and stop.
 
 ## Report
 

@@ -105,7 +105,10 @@ toward silence.
 
 ### 5. Fan out (round 1)
 
-Spawn every gated reviewer **in parallel** (all `Agent` calls in one message).
+Spawn every gated reviewer **in parallel** (all `Agent` calls in one message,
+**synchronous — never background**: backgrounded children's completion
+notifications bypass a runner that has ended its turn; synchronous calls in one
+message still run concurrently and your turn resumes when all have returned).
 Give each the change summary, the changed file list, the relevant context docs
 (per CLAUDE.md), and this instruction: *review strictly within your role; read the
 changed files and your project convention file as needed; if your role is
